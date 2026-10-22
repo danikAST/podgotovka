@@ -331,3 +331,200 @@ th { color: var(--accent); font-size: 13.5px; }
 }
 .snd-btn:hover { background: rgba(137,180,250,.3); }
 
+/* ===== Новые блоки: шапка, поиск, темы, прогресс, диалоги, пробный ЕНТ ===== */
+
+/* Светлая тема */
+html[data-theme="light"] {
+  --bg: #eff1f5;
+  --bg2: #ffffff;
+  --surface: #ccd0da;
+  --surface2: #bcc0cc;
+  --text: #16161d;
+  --muted: #5c5f77;
+  --accent: #1e66f5;
+  --accent-dark: #1e66f5;
+  --green: #1f7a3d;
+  --yellow: #a06e00;
+  --red: #d20f39;
+  --purple: #7c4abf;
+  --border: #d6d9e2;
+}
+html[data-theme="light"] .opt.correct { background: rgba(31,122,61,.12); }
+html[data-theme="light"] .opt.wrong { background: rgba(210,15,57,.10); }
+html[data-theme="light"] .quiz .opt-letter { background: rgba(92,95,119,.15); color: #16161d; }
+html[data-theme="light"] .type-badge.single { background: rgba(30,102,245,.12); }
+html[data-theme="light"] .type-badge.multiple { background: rgba(31,122,61,.12); }
+html[data-theme="light"] .type-badge.situational { background: rgba(160,110,0,.15); }
+html[data-theme="light"] .type-badge.level { background: rgba(124,74,191,.15); }
+html[data-theme="light"] .level-name { color: #7c4abf; }
+html[data-theme="light"] .level-fill { background: #7c4abf; }
+html[data-theme="light"] .snd-btn { color: #1e66f5; }
+html[data-theme="light"] .timer .timer-val { background: rgba(30,102,245,.12); }
+html[data-theme="light"] .result-banner { background: rgba(30,102,245,.08); }
+html[data-theme="light"] .theory-card summary { color: #1e66f5; }
+html[data-theme="light"] .nav-btn.active { background: #1e66f5; }
+html[data-theme="light"] .fc-pron { color: var(--muted); }
+
+/* Шапка */
+.app { flex-direction: column; }
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbar .logo { padding: 0; font-size: 17px; white-space: nowrap; }
+.top-search { position: relative; flex: 1; max-width: 460px; }
+#topSearch {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--surface);
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+#topSearch:focus { border-color: var(--accent); }
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  max-height: 340px;
+  overflow: auto;
+  display: none;
+  z-index: 60;
+}
+.search-results.open { display: block; }
+.search-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 14px;
+}
+.search-item:hover { background: var(--surface); }
+.search-item .s-tag { font-size: 11px; color: var(--accent); font-weight: 700; margin-right: 8px; }
+.search-item .s-ctx { color: var(--muted); font-size: 12.5px; display: block; }
+.search-empty { padding: 12px 14px; color: var(--muted); font-size: 13px; }
+.top-actions { display: flex; gap: 8px; }
+.icon-btn {
+  background: var(--bg);
+  border: 1px solid var(--surface);
+  color: var(--text);
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  font-size: 17px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.icon-btn:hover { border-color: var(--accent); }
+.app-body { display: flex; flex: 1; }
+
+/* Диалоги (турецкий) */
+.dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dialog-line { display: flex; align-items: flex-start; gap: 8px; }
+.dialog-speaker {
+  min-width: 56px;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 13px;
+  padding-top: 2px;
+}
+.dialog-bubble {
+  background: var(--bg2);
+  border: 1px solid var(--surface);
+  border-radius: 12px;
+  padding: 8px 12px;
+  flex: 1;
+}
+.dialog-bubble .tr { color: var(--green); font-weight: 600; }
+.dialog-bubble .ru { color: var(--muted); font-size: 13px; }
+.dialog-btn { align-self: flex-end; }
+
+/* Прогресс + календарь занятий */
+.progress-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.progress-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.progress-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.progress-bar { height: 10px; background: var(--surface); border-radius: 999px; overflow: hidden; margin: 6px 0; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+.progress-num { font-size: 12.5px; color: var(--muted); }
+.weak { color: var(--red); font-weight: 700; }
+.streak { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.streak-day {
+  width: 34px; height: 44px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.streak-day .d { font-weight: 700; font-size: 13px; color: var(--text); }
+.streak-day.on { border-color: var(--green); background: rgba(166,227,161,.14); }
+.streak-day.on .d { color: var(--green); }
+.streak-day.today { border-color: var(--accent); }
+
+/* Отметка «тема пройдена» */
+.mark-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.mark-done input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+/* Плейлист урока */
+.play-btn { margin-right: 8px; }
+
+/* Пробный ЕНТ */
+.exam-intro { font-size: 14.5px; }
+
+/* Сертификат */
+.cert-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.cert-modal.open { display: flex; }
+.cert-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 92vw;
+  text-align: center;
+}
+.cert-box canvas { max-width: 100%; height: auto; border-radius: 8px; }
+.cert-actions { margin-top: 14px; display: flex; gap: 10px; justify-content: center; }
+
