@@ -8,6 +8,20 @@ let quizState = {}; // id -> выбранный индекс (одиночный
 let timerHandle = null;
 let voiceMap = null; // текст (tr) -> имя файла mp3 (из data/voice_map.json)
 
+/* Перемешивание вопросов и вариантов (для «живых» тестов) */
+const LS_WRONG = "turkce_wrong";
+let shuffleQuiz = true;
+const _quizItems = {};   // полный id -> перемешанная копия вопроса
+function makeShuffled(item) {
+  if (!shuffleQuiz || !Array.isArray(item.options) || item.options.length < 2) return item;
+  const order = shuffleArr(item.options.map((_, i) => i));
+  const copy = Object.assign({}, item, { options: order.map((i) => item.options[i]) });
+  if (typeof item.correct === "number") copy.correct = order.indexOf(item.correct);
+  else if (Array.isArray(item.correct)) copy.correct = item.correct.map((i) => order.indexOf(i)).sort((a, b) => a - b);
+  return copy;
+}
+function getQuizItem(id) { return _quizItems[id] || findItem(id); }
+
 /* ---------------- Навигация ---------------- */
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -28,6 +42,7 @@ function render() {
   stopTimer();
   if (currentView === "home") return renderHome();
   if (currentView === "exam") return renderExam();
+  if (currentView === "errors") { renderErrors(); return; }
   content.innerHTML = '<div class="loading">Загрузка…</div>';
   const f = FILE_MAP[currentView] || currentView;
   fetch(`data/${f}.json`)
@@ -62,6 +77,11 @@ function renderHome() {
       <div class="profile-info">
         <h3>Личный кабинет</h3>
         <p class="muted">Твой прогресс, статистика и сертификаты — всё здесь.</p>
+        <div class="profile-actions">
+          <button class="btn small" onclick="exportProgress()">⬇ Сохранить прогресс</button>
+          <button class="btn small ghost" onclick="document.getElementById('importFile').click()">⬆ Загрузить</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importProgress(this)">
+        </div>
       </div>
     </div>
 
@@ -75,7 +95,12 @@ function renderHome() {
         <tr><td>📊 Итого ЕНТ</td><td>60 заданий · 70 баллов · 120 минут</td><td><span class="badge blue">цель</span></td></tr>
         <tr><td>🌍 Bursları</td><td>30 задач за 60 минут</td><td><span class="badge blue">разбор идёт</span></td></tr>
       </table>
-      <p style="margin-top:10px">⏳ До ЕНТ: <b id="daysLeft"></b> дней. Тренируйся каждый день по <b>40–60 минут</b>.</p>
+      <div class="card">
+        <h3>⏳ До ЕНТ</h3>
+        <div class="count-num" id="daysLeftBig"></div>
+        <div class="progress-bar"><div class="progress-fill" id="prepFill"></div></div>
+        <div class="progress-num" id="prepPct"></div>
+      </div>
     </div>
 
     <h2>🗓 График на недели</h2>
@@ -91,7 +116,14 @@ function renderHome() {
   const now = new Date();
   const target = new Date(2027, 5, 1); // июнь 2027 (основная сессия)
   const days = Math.max(1, Math.round((target - now) / 86400000));
-  $("#daysLeft").textContent = days;
+  const start = new Date(2026, 10, 1); // старт подготовки (1 ноября 2026)
+  const elapsedPct = Math.min(100, Math.max(0, ((now - start) / (target - start)) * 100));
+  const dlb = document.getElementById("daysLeftBig");
+  if (dlb) dlb.textContent = days + " дней";
+  const pf = document.getElementById("prepFill");
+  if (pf) pf.style.width = elapsedPct.toFixed(0) + "%";
+  const pp = document.getElementById("prepPct");
+  if (pp) pp.textContent = "Дата экзамена: " + target.toLocaleDateString("ru-RU") + " · подготовки пройдено: " + elapsedPct.toFixed(0) + "%";
 
   const weeks = [
     ["1", "1–7 ноя", "Турецкий: алфавит + приветствия · Математика: дроби и проценты · Инф. технологии: системы счисления"],
@@ -259,8 +291,10 @@ function renderLevelTest(lt) {
     <h2>🎯 ${lt.title}</h2>
     <p class="muted">${lt.description}</p>
     <div class="quiz" data-group="level">`;
-  lt.questions.forEach((q, i) => {
+  lt.questions.forEach((q0, i) => {
+    const q = makeShuffled(q0);
     const id = "level-" + i;
+    _quizItems[id] = q;
     html += `<div class="question" data-qid="${id}">
       <div class="q-text"><span class="type-badge level">${q.level}</span> ${q.section ? `<span class="sec-badge">${q.section}</span>` : ""} ${q.q}</div>
       <div class="options">`;
@@ -291,6 +325,7 @@ function checkLevel() {
 
   lt.questions.forEach((q, i) => {
     const id = "level-" + i;
+    const qRef = _quizItems[id] || q;
     const sel = quizState[id] ?? -1;
     const qEl = document.querySelector(`[data-qid="${id}"]`);
     if (!qEl) return;
@@ -298,11 +333,11 @@ function checkLevel() {
     const solution = qEl.querySelector(".solution");
     qEl.querySelectorAll(".opt").forEach((el, j) => {
       el.classList.remove("selected", "correct", "wrong");
-      if (j === q.correct) el.classList.add("correct");
-      if (j === sel && j !== q.correct) el.classList.add("wrong");
+      if (j === qRef.correct) el.classList.add("correct");
+      if (j === sel && j !== qRef.correct) el.classList.add("wrong");
     });
     totals[q.level]++;
-    if (sel === q.correct) {
+    if (sel === qRef.correct) {
       counts[q.level]++;
       flag.className = "flag green";
       flag.textContent = "✔ Верно!";
@@ -424,8 +459,10 @@ function typeBadge(type) {
 
 function renderQuiz(items, groupId, startNum) {
   let html = `<div class="quiz" data-group="${groupId}">`;
-  items.forEach((item, idx) => {
+  items.forEach((item0, idx) => {
+    const item = makeShuffled(item0);
     const id = groupId + "-" + item.id;
+    _quizItems[id] = item;
     const type = item.type || "single";
     const num = startNum ? startNum + idx : null;
     html += `
@@ -447,7 +484,7 @@ function renderQuiz(items, groupId, startNum) {
 }
 
 function pick(id, idx) {
-  const item = findItem(id);
+  const item = getQuizItem(id);
   const type = item.type || "single";
   if (type === "multiple") {
     const set = quizState[id] || (quizState[id] = new Set());
@@ -481,13 +518,17 @@ function checkGroup(groupId) {
 
   questions.forEach((qEl) => {
     const id = qEl.dataset.qid;
-    const item = findItem(id);
+    const item = getQuizItem(id);
     const type = item.type || "single";
     const pts = POINTS[type] || 1;
     total += pts;
     const chosen = quizState[id] ?? (type === "multiple" ? new Set() : -1);
     const ok = isCorrect(item, chosen);
-    if (ok) { score += pts; correctCount++; }
+    if (ok) { score += pts; correctCount++; wrongRemove(id); }
+    else {
+      const attempted = type === "multiple" ? (chosen instanceof Set && chosen.size > 0) : chosen >= 0;
+      if (attempted) wrongAdd(id);
+    }
     const flag = qEl.querySelector(".flag");
     const solution = qEl.querySelector(".solution");
     qEl.querySelectorAll(".opt").forEach((el, i) => {
@@ -680,6 +721,7 @@ function regenTrain(catId) {
   const pool = genPool(catId, types);
   _trainPools["train-" + catId] = pool;
   Object.keys(quizState).forEach((k) => { if (k.startsWith("train-" + catId + "-")) delete quizState[k]; });
+  Object.keys(_quizItems).forEach((k) => { if (k.startsWith("train-" + catId + "-")) delete _quizItems[k]; });
   const box = document.getElementById("tr-" + catId);
   if (box) { box.innerHTML = renderQuiz(pool, "train-" + catId); afterRender(); }
 }
@@ -743,6 +785,17 @@ function weakAreas() {
   return Object.entries(all).filter(([, r]) => r.total > 0 && r.score / r.total < 0.7);
 }
 
+/* ---------- Работа над ошибками ---------- */
+function wrongAdd(id) {
+  const all = lsGet(LS_WRONG, {});
+  all[id] = (all[id] || 0) + 1;
+  lsSet(LS_WRONG, all);
+}
+function wrongRemove(id) {
+  const all = lsGet(LS_WRONG, {});
+  if (id in all) { delete all[id]; lsSet(LS_WRONG, all); }
+}
+
 /* ---------- Прогресс тем ---------- */
 const LS_TOPICS = "turkce_topics_done";
 function topicDone(view, id) {
@@ -766,6 +819,7 @@ function topicProgress(view, total) {
 function renderHomeStats() {
   const res = lsGet(LS_RESULTS, {});
   const st = streakInfo();
+  const wKeys = Object.keys(lsGet(LS_WRONG, {}));
   let resultsHtml = Object.keys(res).length
     ? Object.entries(res).map(([g, r]) => {
         const pct = Math.round((100 * r.score) / r.total);
@@ -782,6 +836,11 @@ function renderHomeStats() {
       <h3>🔥 Серия занятий</h3>
       <div class="progress-num">Подряд дней: <b style="color:var(--green)">${st.current}</b> · всего отмечено дней: ${st.days}</div>
       <div class="streak">${streakCalendar(st.set)}</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>❌ Работа над ошибками</h3>
+      <div class="progress-num">В списке повторения: <b>${wKeys.length}</b> заданий</div>
+      ${wKeys.length ? '<button class="btn small" style="margin-top:8px" onclick="goTo(\'errors\')">Перейти к повторению</button>' : ""}
     </div>`;
   return html;
 }
@@ -1112,6 +1171,171 @@ function initTopbar() {
   const dl = document.getElementById("certDownload");
   if (dl) dl.addEventListener("click", downloadCert);
   initTheme();
+}
+
+/* ---------- Раздел «Работа над ошибками» ---------- */
+let _wrongList = [];
+let _wrongSel = {};
+
+function renderErrors() {
+  const all = lsGet(LS_WRONG, {});
+  const keys = Object.keys(all);
+  _wrongList = keys.map((fullId) => ({ fullId, count: all[fullId], item: getQuizItem(fullId) }));
+  _wrongSel = {};
+  if (!keys.length) {
+    content.innerHTML = `<h1>❌ Работа над ошибками</h1>
+      <div class="card"><p>Пока пусто 🎉 Если ты ошибёшься в заданиях любого раздела — они появятся здесь автоматически, чтобы ты мог(ла) их повторить.</p></div>`;
+    return;
+  }
+  let html = `<h1>❌ Работа над ошибками</h1>
+    <p class="subtitle">Задания, в которых ты ошибся(лась). Реши их снова — правильно решённые исчезнут из списка.</p>`;
+  _wrongList.forEach((entry, n) => {
+    const item = entry.item;
+    if (!item || item.correct === -1 || !Array.isArray(item.options) || !item.options.length) {
+      html += `<div class="card"><div class="question" data-qid="err-${n}">
+        <div class="q-text">⚠️ Это задание больше недоступно (раздел обновлён).</div>
+        <button class="btn ghost" onclick="wrongForget(${n})">Убрать из списка</button>
+        </div></div>`;
+      return;
+    }
+    const type = item.type || "single";
+    html += `<div class="card"><div class="question" data-qid="err-${n}" data-full="${entry.fullId}">
+      <div class="q-text"><span class="task-num">Повтор №${entry.count}</span> ${typeBadge(type)} ${item.q}</div>
+      ${item.figure ? `<div class="figure">${item.figure}</div>` : ""}
+      <div class="options">`;
+    item.options.forEach((opt, j) => {
+      html += `<div class="opt" data-idx="${j}" onclick="pickWrong(${n}, ${j})"><span class="opt-letter">${LETTERS[j] || "?"}</span> ${opt}</div>`;
+    });
+    html += `</div><div class="flag"></div>
+      <div class="solution hidden"><b>✅ Решение:</b> ${item.solution || "—"}</div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn small" onclick="checkWrong(${n})">Проверить</button>
+        <button class="btn small ghost" onclick="wrongForget(${n})">Убрать из списка</button>
+      </div></div></div>`;
+  });
+  html += `<div style="margin-top:6px"><button class="btn ghost" onclick="wrongClear()">🧹 Очистить весь список</button></div>`;
+  content.innerHTML = html;
+  afterRender();
+}
+
+function pickWrong(n, j) {
+  const entry = _wrongList[n];
+  if (!entry) return;
+  const type = entry.item.type || "single";
+  if (type === "multiple") {
+    const set = _wrongSel[n] || (_wrongSel[n] = new Set());
+    if (set.has(j)) set.delete(j); else set.add(j);
+    document.querySelectorAll(`[data-qid="err-${n}"] .opt`).forEach((el, i) => el.classList.toggle("selected", set.has(i)));
+  } else {
+    _wrongSel[n] = j;
+    document.querySelectorAll(`[data-qid="err-${n}"] .opt`).forEach((el, i) => el.classList.toggle("selected", i === j));
+  }
+}
+
+function checkWrong(n) {
+  const entry = _wrongList[n];
+  if (!entry) return;
+  const item = entry.item;
+  const type = item.type || "single";
+  const chosen = _wrongSel[n] ?? (type === "multiple" ? new Set() : -1);
+  const ok = isCorrect(item, chosen);
+  const qEl = document.querySelector(`[data-qid="err-${n}"]`);
+  if (!qEl) return;
+  const flag = qEl.querySelector(".flag");
+  const solution = qEl.querySelector(".solution");
+  qEl.querySelectorAll(".opt").forEach((el, i) => {
+    el.classList.remove("selected", "correct", "wrong");
+    if (type === "multiple") {
+      if (item.correct.includes(i)) el.classList.add("correct");
+      if (chosen instanceof Set && chosen.has(i) && !item.correct.includes(i)) el.classList.add("wrong");
+    } else {
+      if (i === item.correct) el.classList.add("correct");
+      if (i === chosen && i !== item.correct) el.classList.add("wrong");
+    }
+  });
+  if (ok) {
+    flag.className = "flag green";
+    flag.textContent = "✔ Верно! Ошибка исправлена.";
+    wrongRemove(entry.fullId);
+    setTimeout(() => {
+      const card = qEl.closest(".card");
+      if (card) { card.style.opacity = "0.4"; setTimeout(() => card.remove(), 350); }
+    }, 900);
+  } else {
+    flag.className = "flag red";
+    flag.textContent = type === "multiple" ? "✘ Неверный набор — посмотри решение" : "✘ Неверно — посмотри решение";
+  }
+  solution.classList.remove("hidden");
+}
+
+function wrongForget(n) {
+  const entry = _wrongList[n];
+  if (!entry) return;
+  wrongRemove(entry.fullId);
+  const qEl = document.querySelector(`[data-qid="err-${n}"]`);
+  if (qEl) { const card = qEl.closest(".card"); if (card) card.remove(); }
+}
+
+function wrongClear() {
+  if (!confirm("Убрать все задания из списка ошибок?")) return;
+  lsSet(LS_WRONG, {});
+  renderErrors();
+}
+
+function goTo(view) {
+  currentView = view;
+  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  render();
+}
+
+/* ---------- Экспорт / импорт прогресса ---------- */
+function exportProgress() {
+  const keys = ["turkce_results", "turkce_topics_done", "turkce_fc_srs", "turkce_streak", "turkce_theme", "turkce_cert_level", LS_WRONG];
+  const out = { app: "podgotovka", version: 1, exported: new Date().toISOString(), data: {} };
+  keys.forEach((k) => {
+    try { out.data[k] = JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { out.data[k] = null; }
+  });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "progress-podgotovka.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importProgress(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const obj = JSON.parse(rd.result);
+      if (!obj || !obj.data || typeof obj.data !== "object") throw new Error("bad");
+      Object.entries(obj.data).forEach(([k, v]) => {
+        if (v === null || v === undefined) localStorage.removeItem(k);
+        else localStorage.setItem(k, JSON.stringify(v));
+      });
+      flashToast("✅ Прогресс загружен!");
+      render();
+    } catch (e) {
+      flashToast("⚠️ Неверный файл прогресса");
+    }
+  };
+  rd.readAsText(f);
+  input.value = "";
+}
+
+function flashToast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
 /* считаем, что данные уже загружены в window._data */
