@@ -122,6 +122,37 @@ function renderHome() {
     .join("");
 }
 
+/* ---- Озвучка турецких слов (Web Speech API) ---- */
+function speakTr(el) {
+  const text = (el && el.dataset && el.dataset.word) || el || "";
+  if (!("speechSynthesis" in window)) {
+    if (el) flashBtn(el, "⚠️ Браузер не поддерживает озвучку");
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = "tr-TR";
+    u.rate = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const trVoice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("tr"));
+    if (trVoice) u.voice = trVoice;
+    window.speechSynthesis.speak(u);
+  } catch (e) {
+    if (el) flashBtn(el, "⚠️ Ошибка озвучки");
+  }
+}
+
+function flashBtn(btn, msg) {
+  const old = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = old; }, 2500);
+}
+
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = function () {};
+}
+
 /* ---------------- Турецкий ---------------- */
 function renderTurkce(data) {
   let html = `<h1>🇹🇷 Турецкий язык</h1>
@@ -137,7 +168,9 @@ function renderTurkce(data) {
       html += `<div class="phrase-grid">`;
       lesson.phrases.forEach((p) => {
         html += `<div class="phrase">
-          <div class="tr">${p.tr}</div>
+          <div class="phrase-top"><span class="tr">${p.tr}</span>
+            <button class="snd-btn" data-word="${p.tr}" onclick="speakTr(this)" title="Послушать">🔊</button>
+          </div>
           <div class="pron">${p.pron || ""}</div>
           <div class="ru">${p.ru}</div>
         </div>`;
@@ -185,7 +218,7 @@ function renderFcCard() {
   const c = _fc[_fcIdx];
   const st = JSON.parse(localStorage.getItem("turkce_fc") || "{}");
   const stats = st[c.tr] || { ok: 0, fail: 0 };
-  let html = `<div class="fc-word">${c.tr}</div>`;
+  let html = `<div class="fc-word">${c.tr} <button class="snd-btn" data-word="${c.tr}" onclick="speakTr(this)" title="Послушать">🔊</button></div>`;
   if (c.pron) html += `<div class="fc-pron muted">${c.pron}</div>`;
   if (_fcRevealed) {
     html += `<div class="fc-ru">${c.ru}</div>
