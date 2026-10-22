@@ -52,16 +52,16 @@ function render() {
 function renderHome() {
   content.innerHTML = `
     <h1>🎓 План подготовки</h1>
-    <div class="subtitle">Цель: ЕНТ (математика + основы алгоритмизации и программирования · В057) + Türkiye Bursları + турецкий язык</div>
+    <div class="subtitle">Подготовка к экзаменам и турецкому языку</div>
 
     <div class="card profile-card">
       <div class="avatar-wrap">
         <img id="profileAvatar" src="photo.jpg" alt="Фото" onerror="this.style.display='none';document.getElementById('avatarPlaceholder').style.display='flex'">
-        <div id="avatarPlaceholder" class="avatar-placeholder">ДК</div>
+        <div id="avatarPlaceholder" class="avatar-placeholder">🚀</div>
       </div>
       <div class="profile-info">
-        <h3>Данияр Кишкенов</h3>
-        <p class="muted">Студент 4 курса · ВТЭК, Астана<br>Готовится: ЕНТ + Türkiye Bursları + турецкий язык</p>
+        <h3>Личный кабинет</h3>
+        <p class="muted">Твой прогресс, статистика и сертификаты — всё здесь.</p>
       </div>
     </div>
 
@@ -1025,7 +1025,7 @@ function drawCert() {
   ctx.fillText("подтверждает, что", W / 2, 205);
   ctx.fillStyle = "#89b4fa";
   ctx.font = "bold 44px Segoe UI, sans-serif";
-  ctx.fillText("Данияр Кишкенов", W / 2, 290);
+  ctx.fillText("Обучающийся", W / 2, 290);
   ctx.fillStyle = "#cdd6f4";
   ctx.font = "24px Segoe UI, sans-serif";
   ctx.fillText(`успешно прошёл(ла) курс турецкого языка и достиг(ла) уровня ${_certLevel || "A1"} (CEFR)`, W / 2, 360);
@@ -1035,9 +1035,6 @@ function drawCert() {
   ctx.fillStyle = "#cdd6f4";
   ctx.font = "22px Segoe UI, sans-serif";
   ctx.fillText(new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }), W / 2, 560);
-  ctx.font = "18px Segoe UI, sans-serif";
-  ctx.fillStyle = "#a6adc8";
-  ctx.fillText("Астана, Казахстан", W / 2, 600);
 }
 function openCert() {
   document.getElementById("certModal").classList.add("open");
