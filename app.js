@@ -21,11 +21,14 @@ function stopTimer() {
   if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
 }
 
+const FILE_MAP = { turkce: "turkce", math: "ent_math", inf: "ent_inf", burslari: "burslari" };
+
 function render() {
   stopTimer();
   if (currentView === "home") return renderHome();
   content.innerHTML = '<div class="loading">Загрузка…</div>';
-  fetch(`data/${currentView}.json`)
+  const f = FILE_MAP[currentView] || currentView;
+  fetch(`data/${f}.json`)
     .then((r) => {
       if (!r.ok) throw new Error("нет данных");
       return r.json();
@@ -161,7 +164,7 @@ function renderLevelTest(lt) {
       <div class="q-text"><span class="type-badge level">${q.level}</span> ${q.section ? `<span class="sec-badge">${q.section}</span>` : ""} ${q.q}</div>
       <div class="options">`;
     q.options.forEach((opt, j) => {
-      html += `<div class="opt" data-idx="${j}" onclick="pick('${id}', ${j})">${opt}</div>`;
+      html += `<div class="opt" data-idx="${j}" onclick="pick('${id}', ${j})"><span class="opt-letter">${LETTERS[j] || "?"}</span> ${opt}</div>`;
     });
     html += `</div><div class="flag"></div><div class="solution hidden"><b>✅ Решение:</b> ${q.solution || "—"}</div></div>`;
   });
@@ -242,11 +245,13 @@ function renderEnt(data, kind) {
   if (data.instruction) html += `<div class="card exam-instruction">📋 ${data.instruction}</div>`;
   if (data.timeLimit) html += renderTimer(data.timeLimit);
 
+  let num = 0;
   (data.topics || []).forEach((topic) => {
     html += `<h2>${topic.title}</h2>`;
     if (topic.theory) html += `<div class="card"><div class="theory">${topic.theory}</div></div>`;
     if (topic.tasks && topic.tasks.length) {
-      html += renderQuiz(topic.tasks, kind + "-" + topic.id);
+      html += renderQuiz(topic.tasks, kind + "-" + topic.id, num + 1);
+      num += topic.tasks.length;
     }
   });
   content.innerHTML = html;
@@ -258,18 +263,14 @@ function renderEnt(data, kind) {
 function renderBurslari(data) {
   let html = `<h1>🌍 Türkiye Bursları</h1>
     <div class="subtitle">${data.subtitle || ""}</div>
-    <div class="card"><b>Реальный формат:</b> ${data.format || "30 заданий за 60 минут, выбор ответа из 5."}</div>`;
+    <div class="card"><b>Реальный формат:</b> ${data.format || "30 заданий за 60 минут, выбор ответа из 5 (A–E)."}</div>`;
   if (data.instruction) html += `<div class="card exam-instruction">📋 ${data.instruction}</div>`;
   if (data.timeLimit) html += renderTimer(data.timeLimit);
 
-  (data.tasks || []).forEach((t) => {
-    html += `
-      <div class="card question">
-        <div class="q-text"><b>${t.num}.</b> ${t.q}</div>
-        ${t.figure ? `<div class="figure">${t.figure}</div>` : ""}
-        ${renderQuiz([Object.assign({}, t, { id: t.num })], "burs-" + t.num)}
-      </div>`;
-  });
+  // Один общий экзамен: все задачи в одном блоке, одна кнопка проверки
+  const tasks = (data.tasks || []).map((t) => Object.assign({}, t, { id: t.num }));
+  html += renderQuiz(tasks, "burs", 1);
+
   content.innerHTML = html;
   if (data.timeLimit) startTimer(data.timeLimit);
   bindQuiz();
@@ -305,6 +306,7 @@ function fmtT(s) {
 
 /* ---------------- Тест-рендер ---------------- */
 const POINTS = { single: 1, multiple: 2, situational: 1 };
+const LETTERS = ["A", "B", "C", "D", "E"];
 
 function typeBadge(type) {
   if (type === "multiple") return '<span class="type-badge multiple">🧩 Выбор нескольких</span>';
@@ -312,18 +314,19 @@ function typeBadge(type) {
   return '<span class="type-badge single">◯ Один ответ</span>';
 }
 
-function renderQuiz(items, groupId) {
+function renderQuiz(items, groupId, startNum) {
   let html = `<div class="quiz" data-group="${groupId}">`;
-  items.forEach((item) => {
+  items.forEach((item, idx) => {
     const id = groupId + "-" + item.id;
     const type = item.type || "single";
+    const num = startNum ? startNum + idx : null;
     html += `
       <div class="question" data-qid="${id}">
-        <div class="q-text">${typeBadge(type)} ${item.q}</div>
+        <div class="q-text">${num ? `<span class="task-num">Задание ${num}</span>` : ""} ${typeBadge(type)} ${item.q}</div>
         ${item.figure ? `<div class="figure">${item.figure}</div>` : ""}
         <div class="options">`;
     item.options.forEach((opt, i) => {
-      html += `<div class="opt" data-idx="${i}" onclick="pick('${id}', ${i})">${opt}</div>`;
+      html += `<div class="opt" data-idx="${i}" onclick="pick('${id}', ${i})"><span class="opt-letter">${LETTERS[i] || "?"}</span> ${opt}</div>`;
     });
     html += `</div>
         <div class="flag"></div>
@@ -432,7 +435,7 @@ function findItem(id) {
   }
   if (file === "burs") {
     const data = window._data["burslari"];
-    return data.tasks.find((t) => String(t.num) === num);
+    return data.tasks.find((t) => String(t.num) === key);
   }
   return { correct: -1, options: [] };
 }
@@ -450,8 +453,8 @@ function bindQuiz() {
 /* считаем, что данные уже загружены в window._data */
 window._data = {};
 const loadAll = () => {
-  ["turkce", "math", "inf", "burslari"].forEach((f) => {
-    fetch(`data/${f}.json`).then((r) => r.json()).then((d) => (window._data[f] = d)).catch(() => {});
+  Object.entries(FILE_MAP).forEach(([view, f]) => {
+    fetch(`data/${f}.json`).then((r) => r.json()).then((d) => (window._data[view] = d)).catch(() => {});
   });
 };
 loadAll();
