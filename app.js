@@ -54,6 +54,17 @@ function renderHome() {
     <h1>🎓 План подготовки</h1>
     <div class="subtitle">Цель: ЕНТ (математика + основы алгоритмизации и программирования · В057) + Türkiye Bursları + турецкий язык</div>
 
+    <div class="card profile-card">
+      <div class="avatar-wrap">
+        <img id="profileAvatar" src="photo.jpg" alt="Фото" onerror="this.style.display='none';document.getElementById('avatarPlaceholder').style.display='flex'">
+        <div id="avatarPlaceholder" class="avatar-placeholder">ДК</div>
+      </div>
+      <div class="profile-info">
+        <h3>Данияр Кишкенов</h3>
+        <p class="muted">Студент 4 курса · ВТЭК, Астана<br>Готовится: ЕНТ + Türkiye Bursları + турецкий язык</p>
+      </div>
+    </div>
+
     <div class="card">
       <h3>📊 Твоя траектория</h3>
       <table>
