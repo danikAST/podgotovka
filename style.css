@@ -120,6 +120,9 @@ th { color: var(--accent); font-size: 13.5px; }
   border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   transition: border-color .15s, background .15s;
 }
 .opt:hover { border-color: var(--accent); }
@@ -242,6 +245,34 @@ th { color: var(--accent); font-size: 13.5px; }
   margin-right: 6px;
   vertical-align: middle;
 }
+.task-num {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(137,180,250,.12);
+  color: #89b4fa;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.opt-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(166,173,200,.16);
+  color: #cdd6f4;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.opt.selected .opt-letter { background: var(--accent); color: #fff; }
+.opt.correct .opt-letter { background: #a6e3a1; color: #11111b; }
+.opt.wrong .opt-letter { background: #f38ba8; color: #11111b; }
 
 /* Баннер результата теста уровня */
 .level-result-title { font-size: 17px; margin-bottom: 10px; }
