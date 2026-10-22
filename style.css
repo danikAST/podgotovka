@@ -293,5 +293,25 @@ th { color: var(--accent); font-size: 13.5px; }
   font-size: 14px;
   line-height: 1.55;
 }
+.theory-card summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  padding: 4px 0;
+  user-select: none;
+}
+.theory-card[open] summary { margin-bottom: 8px; }
+.theory { font-size: 14px; line-height: 1.65; color: var(--text); }
+.theory ul { margin: 6px 0 6px 20px; }
+.theory li { margin: 4px 0; }
 .muted { color: var(--muted); font-size: 13px; }
 .level-card { border-color: rgba(203,166,247,.35); }
+
+/* Карточки слов */
+#fc-box { text-align: center; }
+.fc-word { font-size: 30px; font-weight: 800; color: var(--accent); margin: 4px 0 2px; }
+.fc-pron { font-size: 15px; }
+.fc-ru { font-size: 20px; color: var(--green); margin-top: 8px; }
+.fc-count { margin-top: 12px; color: var(--muted); font-size: 12.5px; }
+
