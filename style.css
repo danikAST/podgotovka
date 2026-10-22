@@ -315,3 +315,19 @@ th { color: var(--accent); font-size: 13.5px; }
 .fc-ru { font-size: 20px; color: var(--green); margin-top: 8px; }
 .fc-count { margin-top: 12px; color: var(--muted); font-size: 12.5px; }
 
+/* Кнопка прослушивания (озвучка) */
+.phrase-top { display: flex; align-items: center; }
+.snd-btn {
+  background: rgba(137,180,250,.15);
+  border: 1px solid rgba(137,180,250,.4);
+  color: var(--accent);
+  border-radius: 999px;
+  width: 34px; height: 34px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  margin-left: 8px;
+  transition: background .15s;
+}
+.snd-btn:hover { background: rgba(137,180,250,.3); }
+
