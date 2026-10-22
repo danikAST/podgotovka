@@ -21,7 +21,7 @@ function stopTimer() {
   if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
 }
 
-const FILE_MAP = { turkce: "turkce", math: "ent_math", inf: "ent_inf", burslari: "burslari" };
+const FILE_MAP = { turkce: "turkce", math: "ent_math", inf: "ent_inf", burslari: "burslari", training: "training" };
 
 function render() {
   stopTimer();
@@ -38,6 +38,7 @@ function render() {
       else if (currentView === "math") renderEnt(data, "math");
       else if (currentView === "inf") renderEnt(data, "inf");
       else if (currentView === "burslari") renderBurslari(data);
+      else if (currentView === "training") renderTraining(data);
       afterRender();
     })
     .catch(() => {
@@ -149,8 +150,67 @@ function renderTurkce(data) {
     html += `</div>`;
   });
 
+  html += `<div class="card" id="fc-box"><h2>📚 Карточки слов</h2><div id="fc-inner"></div></div>`;
+
   content.innerHTML = html;
+  initFlashcards(data);
   bindQuiz();
+}
+
+/* ---- Карточки слов (как в языковых курсах, с запоминанием) ---- */
+let _fc = null;
+let _fcIdx = 0;
+let _fcRevealed = false;
+
+function flashcardsFromData(data) {
+  const map = {};
+  (data.lessons || []).forEach((l) => {
+    (l.phrases || []).forEach((p) => {
+      if (p.tr && !map[p.tr]) map[p.tr] = { tr: p.tr, pron: p.pron || "", ru: p.ru };
+    });
+  });
+  return Object.values(map);
+}
+
+function initFlashcards(data) {
+  _fc = flashcardsFromData(data);
+  _fcIdx = 0;
+  _fcRevealed = false;
+  renderFcCard();
+}
+
+function renderFcCard() {
+  const inner = $("#fc-inner");
+  if (!inner || !_fc || !_fc.length) return;
+  const c = _fc[_fcIdx];
+  const st = JSON.parse(localStorage.getItem("turkce_fc") || "{}");
+  const stats = st[c.tr] || { ok: 0, fail: 0 };
+  let html = `<div class="fc-word">${c.tr}</div>`;
+  if (c.pron) html += `<div class="fc-pron muted">${c.pron}</div>`;
+  if (_fcRevealed) {
+    html += `<div class="fc-ru">${c.ru}</div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="fcAnswer(1)">🟢 Знаю</button>
+        <button class="btn" style="margin-left:8px" onclick="fcAnswer(0)">🔴 Ещё учу</button>
+      </div>`;
+  } else {
+    html += `<div style="margin-top:12px"><button class="btn" onclick="revealFc()">👁 Показать перевод</button></div>`;
+  }
+  html += `<div class="fc-count muted">Карточка ${_fcIdx + 1} / ${_fc.length} · угадано: ${stats.ok}, ошибок: ${stats.fail}</div>`;
+  inner.innerHTML = html;
+}
+
+function revealFc() { _fcRevealed = true; renderFcCard(); }
+
+function fcAnswer(ok) {
+  const c = _fc[_fcIdx];
+  const st = JSON.parse(localStorage.getItem("turkce_fc") || "{}");
+  if (!st[c.tr]) st[c.tr] = { ok: 0, fail: 0 };
+  if (ok) st[c.tr].ok++; else st[c.tr].fail++;
+  localStorage.setItem("turkce_fc", JSON.stringify(st));
+  _fcIdx = (_fcIdx + 1) % _fc.length;
+  _fcRevealed = false;
+  renderFcCard();
 }
 
 function renderLevelTest(lt) {
@@ -248,7 +308,7 @@ function renderEnt(data, kind) {
   let num = 0;
   (data.topics || []).forEach((topic) => {
     html += `<h2>${topic.title}</h2>`;
-    if (topic.theory) html += `<div class="card"><div class="theory">${topic.theory}</div></div>`;
+    if (topic.theory) html += `<details class="card theory-card"><summary>📖 Что это и как решать</summary><div class="theory">${topic.theory}</div></details>`;
     if (topic.tasks && topic.tasks.length) {
       html += renderQuiz(topic.tasks, kind + "-" + topic.id, num + 1);
       num += topic.tasks.length;
@@ -265,6 +325,7 @@ function renderBurslari(data) {
     <div class="subtitle">${data.subtitle || ""}</div>
     <div class="card"><b>Реальный формат:</b> ${data.format || "30 заданий за 60 минут, выбор ответа из 5 (A–E)."}</div>`;
   if (data.instruction) html += `<div class="card exam-instruction">📋 ${data.instruction}</div>`;
+  if (data.strategy) html += `<details class="card theory-card"><summary>🎯 Стратегия: как решать эти задачи</summary><div class="theory">${data.strategy}</div></details>`;
   if (data.timeLimit) html += renderTimer(data.timeLimit);
 
   // Один общий экзамен: все задачи в одном блоке, одна кнопка проверки
@@ -437,7 +498,138 @@ function findItem(id) {
     const data = window._data["burslari"];
     return data.tasks.find((t) => String(t.num) === key);
   }
+  if (file === "train") {
+    const pool = _trainPools[id];
+    if (!pool) return { correct: -1, options: [] };
+    return pool.find((q) => String(q.id) === num) || { correct: -1, options: [] };
+  }
   return { correct: -1, options: [] };
+}
+
+/* ---------------- Тренировка: генератор случайных вариантов ---------------- */
+const _trainPools = {};   // "train-math" -> [{num,id,q,options,correct,solution}]
+const _trainTypes = {};   // "math" -> [типы из training.json]
+
+function ri(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function shuffleArr(a) {
+  const arr = a.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = ri(0, i);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function mkOptions(correctVal, decoys) {
+  const opts = shuffleArr([String(correctVal)].concat(decoys.map(String)));
+  return { options: opts, correct: opts.indexOf(String(correctVal)) };
+}
+function makeItem(num, q, solution, options, correct) {
+  return { num: num, id: num, q: q, options: options, correct: correct, solution: solution };
+}
+
+const GEN_TASKS = {
+  line_eq() {
+    const a = ri(2, 9), k = ri(2, 12), b = ri(-9, 9);
+    const c = a * k + b;
+    const x = k;
+    const { options, correct } = mkOptions("x = " + x, ["x = " + (x + 1), "x = " + (x - 1), "x = " + (x + 2)]);
+    return { vars: { a, b, c }, options, correct, solution: `Перенесём ${b < 0 ? "− " + -b : "+ " + b} вправо: ${a}x = ${c} ${b < 0 ? "+ " + -b : "− " + b} = ${a * x}. x = ${a * x} / ${a} = ${x}.` };
+  },
+  percent() {
+    const n = ri(20, 500), p = [5, 10, 15, 20, 25, 30, 50][ri(0, 6)];
+    const v = (n * p) / 100;
+    const { options, correct } = mkOptions(v, [v + n * 0.05, Math.round(v * 1.1), n - v]);
+    return { vars: { p, n }, options, correct, solution: `${p}% от ${n} = ${n} × ${p} / 100 = ${v}.` };
+  },
+  power() {
+    const a = ri(2, 5), m = ri(2, 4), n = ri(2, 4);
+    const res = Math.pow(a, m + n);
+    const { options, correct } = mkOptions(res, [Math.pow(a, m * n), Math.pow(a, m + n - 1), Math.pow(a + 1, m + n)]);
+    return { vars: { a, m, n }, options, correct, solution: `При умножении степеней показатели складываются: ${a}^${m} × ${a}^${n} = ${a}^(${m}+${n}) = ${a}^${m + n} = ${res}.` };
+  },
+  fraction() {
+    let p = ri(1, 4), q = ri(2, 7), r = ri(1, 4), s = ri(2, 7);
+    if (p >= q) p = q - 1; if (r >= s) r = s - 1;
+    const num = p * s + r * q, den = q * s;
+    const { options, correct } = mkOptions(num + "/" + den, [(num + 1) + "/" + den, num + "/" + (den + 1), (num - 1) + "/" + den]);
+    return { vars: { p, q, r, s }, options, correct, solution: `К общему знаменателю ${q}×${s}=${den}: (${p}×${s} + ${r}×${q}) / ${den} = ${num}/${den}.` };
+  },
+  quad() {
+    const a = ri(1, 7), b = ri(1, 7);
+    const s = a + b, p = a * b;
+    const bigger = Math.max(a, b);
+    const { options, correct } = mkOptions(bigger, [a, Math.min(a, b) + 1, a + b]);
+    return { vars: { s, p }, options, correct, solution: `По теореме Виета x₁+x₂=${s}, x₁·x₂=${p}. Корни: ${a} и ${b}. Больший = ${bigger}.` };
+  },
+  bin_add() {
+    const v1 = ri(5, 15), v2 = ri(3, 11);
+    const sum = v1 + v2;
+    const b1 = v1.toString(2), b2 = v2.toString(2), bs = sum.toString(2);
+    const decoys = [sum.toString(2).replace(/0$/, "1"), (sum + 1).toString(2), v1.toString(2) + v2.toString(2)];
+    const { options, correct } = mkOptions(bs, decoys);
+    return { vars: { b1, b2 }, options, correct, solution: `${b1}₂ = ${v1}, ${b2}₂ = ${v2}. ${v1}+${v2}=${sum} = ${bs}₂.` };
+  },
+  hex() {
+    const dec = ri(32, 4095);
+    const hex = dec.toString(16).toUpperCase();
+    const { options, correct } = mkOptions(hex, [(dec + 1).toString(16).toUpperCase(), dec.toString(16).toUpperCase().slice(1), (dec * 2).toString(16).toUpperCase()]);
+    return { vars: { dec }, options, correct, solution: `Делим на 16: ${hex}₁₆ = ${dec}₁₀.` };
+  },
+  logic() {
+    const x = ri(0, 1), y = ri(0, 1);
+    const res = (x & (1 - y)) | ((1 - x) & y); // XOR
+    const { options, correct } = mkOptions(res, [1 - res, 0, 1]);
+    return { vars: { x, y }, options, correct, solution: `Ответ: (x ∧ ¬y) ∨ (¬x ∧ y) = x ⊕ y; при x=${x}, y=${y} → ${res}.` };
+  },
+  ones() {
+    const dec = ri(3, 255);
+    const bin = dec.toString(2);
+    const ones = bin.split("").filter((c) => c === "1").length;
+    const { options, correct } = mkOptions(ones, [Math.max(0, ones - 1), ones + 1, bin.length]);
+    return { vars: { dec, bin }, options, correct, solution: `${dec}₁₀ = ${bin}₂. Единиц: ${ones}.` };
+  },
+  sum() {
+    const n = ri(4, 20);
+    const s = (n * (n + 1)) / 2;
+    const { options, correct } = mkOptions(s, [s - n, s + n, n * n]);
+    return { vars: { n }, options, correct, solution: `Сумма арифметической прогрессии: (1+${n})×${n}/2 = ${s}.` };
+  }
+};
+
+function genPool(catId, types) {
+  return types.map((t, i) => {
+    const g = GEN_TASKS[t.gen]();
+    const q = t.template.replace(/\{(\w+)\}/g, (_, k) => g.vars[k] ?? "?");
+    return makeItem(i + 1, q, g.solution, g.options, g.correct);
+  });
+}
+
+function renderTraining(data) {
+  let html = `<h1>🔥 Тренировка: случайные варианты</h1>
+    <p class="subtitle">${data.description}</p>`;
+  data.categories.forEach((cat) => {
+    _trainTypes[cat.id] = cat.types;
+    const pool = genPool(cat.id, cat.types);
+    _trainPools["train-" + cat.id] = pool;
+    html += `<h2>${cat.title}</h2>
+      ${cat.theory ? `<details class="card theory-card"><summary>📖 Что это и как решать</summary><div class="theory">${cat.theory}</div></details>` : ""}
+      <div class="card" style="display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="regenTrain('${cat.id}')">🔄 Новый вариант</button>
+        <span class="muted">числа меняются каждый раз</span>
+      </div>
+      <div id="tr-${cat.id}">${renderQuiz(pool, "train-" + cat.id)}</div>`;
+  });
+  content.innerHTML = html;
+}
+
+function regenTrain(catId) {
+  const types = _trainTypes[catId];
+  if (!types) return;
+  const pool = genPool(catId, types);
+  _trainPools["train-" + catId] = pool;
+  Object.keys(quizState).forEach((k) => { if (k.startsWith("train-" + catId + "-")) delete quizState[k]; });
+  const box = document.getElementById("tr-" + catId);
+  if (box) { box.innerHTML = renderQuiz(pool, "train-" + catId); afterRender(); }
 }
 
 function afterRender() {
