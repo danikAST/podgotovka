@@ -625,8 +625,10 @@ const GEN_TASKS = {
     const a = ri(2, 9), k = ri(2, 12), b = ri(-9, 9);
     const c = a * k + b;
     const x = k;
+    const term = b < 0 ? "− " + (-b) : "+ " + b;
+    const move = b < 0 ? "+ " + (-b) : "− " + b;
     const { options, correct } = mkOptions("x = " + x, ["x = " + (x + 1), "x = " + (x - 1), "x = " + (x + 2)]);
-    return { vars: { a, b, c }, options, correct, solution: `Перенесём ${b < 0 ? "− " + -b : "+ " + b} вправо: ${a}x = ${c} ${b < 0 ? "+ " + -b : "− " + b} = ${a * x}. x = ${a * x} / ${a} = ${x}.` };
+    return { vars: { a, c, term }, options, correct, solution: `Перенесём ${move} вправо: ${a}x = ${c} ${move} = ${a * x}. Значит x = ${a * x} ÷ ${a} = ${x}.` };
   },
   percent() {
     const n = ri(20, 500), p = [5, 10, 15, 20, 25, 30, 50][ri(0, 6)];
@@ -638,7 +640,7 @@ const GEN_TASKS = {
     const a = ri(2, 5), m = ri(2, 4), n = ri(2, 4);
     const res = Math.pow(a, m + n);
     const { options, correct } = mkOptions(res, [Math.pow(a, m * n), Math.pow(a, m + n - 1), Math.pow(a + 1, m + n)]);
-    return { vars: { a, m, n }, options, correct, solution: `При умножении степеней показатели складываются: ${a}^${m} × ${a}^${n} = ${a}^(${m}+${n}) = ${a}^${m + n} = ${res}.` };
+    return { vars: { a, m, n }, options, correct, solution: `При умножении степеней показатели складываются: ${a}<sup>${m}</sup> · ${a}<sup>${n}</sup> = ${a}<sup>${m} + ${n}</sup> = ${a}<sup>${m + n}</sup> = ${res}.` };
   },
   fraction() {
     let p = ri(1, 4), q = ri(2, 7), r = ri(1, 4), s = ri(2, 7);
@@ -730,6 +732,35 @@ function afterRender() {
   if (window.renderMathInElement) {
     try { renderMathInElement(content, { delimiters: [{ left: "$$", right: "$$", display: true }, { left: "$", right: "$", display: false }] }); } catch (e) {}
   }
+  fixMath();
+}
+
+/* ---------- Запасной рендер математики (если KaTeX не загрузился) ---------- */
+const MATH_SYM = {
+  "\\cdot": "·", "\\times": "×", "\\div": "÷", "\\pm": "±",
+  "\\le": "≤", "\\ge": "≥", "\\ne": "≠", "\\approx": "≈",
+  "\\to": "→", "\\in": "∈", "\\infty": "∞", "\\%": "%", "\\ldots": "…"
+};
+
+function mathFallback(html) {
+  if (!html || html.indexOf("$") < 0) return html;
+  return html.replace(/\$([^$]+)\$/g, (_, s0) => {
+    let t = s0.trim();
+    Object.entries(MATH_SYM).forEach(([k, v]) => { t = t.split(k).join(v); });
+    t = t.replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '<span class="fr"><span class="fn">$1</span><span class="fd">$2</span></span>');
+    t = t.replace(/\\sqrt\{([^}]*)\}/g, '√($1)');
+    t = t.replace(/\\text\{([^}]*)\}/g, "$1");
+    t = t.replace(/([A-Za-z0-9\)\]])\^\{([^}]*)\}/g, "$1<sup>$2</sup>");
+    t = t.replace(/([A-Za-z0-9\)\]'])\^([0-9]+)/g, "$1<sup>$2</sup>");
+    t = t.replace(/([A-Za-z])\_\{([^}]*)\}/g, "$1<sub>$2</sub>");
+    return t;
+  });
+}
+
+function fixMath() {
+  content.querySelectorAll(".q-text, .solution, .theory").forEach((el) => {
+    if (el.innerHTML.indexOf("$") >= 0) el.innerHTML = mathFallback(el.innerHTML);
+  });
 }
 
 function bindQuiz() {

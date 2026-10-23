@@ -574,6 +574,17 @@ html[data-theme="light"] .fc-pron { color: var(--muted); }
   margin: 2px 0 10px;
 }
 
+/* Дроби в запасном рендере математики */
+.fr {
+  display: inline-block;
+  vertical-align: middle;
+  text-align: center;
+  margin: 0 3px;
+  font-size: .92em;
+}
+.fn { display: block; padding: 0 3px; }
+.fd { display: block; padding: 0 3px; border-top: 1.5px solid currentColor; }
+
 /* Тост-уведомления */
 #toast {
   position: fixed;
