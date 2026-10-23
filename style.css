@@ -191,6 +191,21 @@ th { color: var(--accent); font-size: 13.5px; }
   font-size: 16px;
 }
 .result-banner b { color: var(--accent); }
+.result-main { font-size: 17px; font-weight: 600; }
+.result-time { margin-top: 6px; font-size: 15px; color: var(--muted); }
+.result-time b { color: var(--accent); }
+.weak-title { margin-top: 12px; font-weight: 700; font-size: 15px; color: var(--red); }
+.weak-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.weak-chip {
+  background: rgba(243,139,168,.14);
+  border: 1px solid rgba(243,139,168,.4);
+  color: var(--red);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.weak-ok { margin-top: 10px; font-size: 15px; color: var(--green); font-weight: 600; }
 
 /* Адаптив */
 @media (max-width: 760px) {

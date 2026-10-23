@@ -5,6 +5,7 @@ const $ = (sel) => document.querySelector(sel);
 const content = $("#content");
 let currentView = "home";
 let quizState = {}; // id -> выбранный индекс (одиночный) или Set (множественный)
+let quizStart = {}; // groupId -> Date.now() начала теста
 let timerHandle = null;
 let voiceMap = null; // текст (tr) -> имя файла mp3 (из data/voice_map.json)
 
@@ -287,6 +288,7 @@ function initFlashcards(data) {
 }
 
 function renderLevelTest(lt) {
+  quizStart["level"] = Date.now();
   let html = `<div class="card level-card">
     <h2>🎯 ${lt.title}</h2>
     <p class="muted">${lt.description}</p>
@@ -321,6 +323,7 @@ const LEVEL_REC = {
 function checkLevel() {
   const lt = window._data["turkce"].level_test;
   const counts = {}, totals = {};
+  const secs = {}; // раздел -> {total, ok}
   LEVEL_ORDER.forEach((L) => { counts[L] = 0; totals[L] = 0; });
 
   lt.questions.forEach((q, i) => {
@@ -337,8 +340,12 @@ function checkLevel() {
       if (j === sel && j !== qRef.correct) el.classList.add("wrong");
     });
     totals[q.level]++;
+    const sec = q.section || "Разное";
+    if (!secs[sec]) secs[sec] = { total: 0, ok: 0 };
+    secs[sec].total++;
     if (sel === qRef.correct) {
       counts[q.level]++;
+      secs[sec].ok++;
       flag.className = "flag green";
       flag.textContent = "✔ Верно!";
     } else {
@@ -367,8 +374,21 @@ function checkLevel() {
     </div>`;
   }).join("");
 
+  const elapsed = quizStart["level"] ? fmtTime((Date.now() - quizStart["level"]) / 1000) : "—";
+  const weakSecs = Object.entries(secs).filter(([, s]) => s.total > 0 && s.ok / s.total < 0.6);
+  let secHtml = "";
+  if (weakSecs.length) {
+    secHtml = `<div class="weak-title">📉 Слабые разделы (повтори):</div><div class="weak-chips">${weakSecs
+      .map(([name, s]) => `<span class="weak-chip">${name} — ${s.ok}/${s.total} (${Math.round(100 * s.ok / s.total)}%)</span>`)
+      .join("")}</div>`;
+  } else {
+    secHtml = '<div class="weak-ok">🎉 Все разделы пройдены уверенно!</div>';
+  }
+
   div.innerHTML = `<div class="level-result-title">Твой уровень: <b>${level}</b> <span class="muted">(CEFR)</span></div>
     <div class="level-bars">${bars}</div>
+    <div class="result-time">⏱ Время прохождения: <b>${elapsed}</b></div>
+    ${secHtml}
     <div class="level-rec">💡 ${LEVEL_REC[level]}</div>`;
   document.querySelector('.quiz[data-group="level"]').prepend(div);
   div.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -459,6 +479,7 @@ function typeBadge(type) {
 }
 
 function renderQuiz(items, groupId, startNum) {
+  if (!quizStart[groupId]) quizStart[groupId] = Date.now();
   let html = `<div class="quiz" data-group="${groupId}">`;
   items.forEach((item0, idx) => {
     const item = makeShuffled(item0);
@@ -511,11 +532,51 @@ function isCorrect(item, chosen) {
   return (chosen ?? -1) === item.correct;
 }
 
+/* ---------- Итог теста: время + плохо решённые темы ---------- */
+function fmtTime(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function topicLabelOf(id, item) {
+  if (item && item.topicTitle) return item.topicTitle;
+  if (item && item.topic) return item.topic;
+  const parts = id.split("-");
+  const file = parts[0];
+  if (file === "level") return item.level || "Уровень";
+  if (file === "math" || file === "inf") {
+    const data = window._data[file];
+    const t = (data.topics || []).find((x) => String(x.id) === parts[1]);
+    return t ? t.title : file;
+  }
+  if (file === "burs") return "🌍 Türkiye Bursları";
+  if (file === "train") {
+    const cats = (window._data["training"] || { categories: [] }).categories;
+    const cat = cats.find((c) => id.startsWith("train-" + c.id));
+    return cat ? cat.title : "Тренировка";
+  }
+  if (file === "turkce") return "Урок " + (parts[1] || "?");
+  if (file === "exam") return "ЕНТ";
+  return file;
+}
+
+function weakTopicsHtml(stats) {
+  const weak = Object.entries(stats).filter(([, s]) => s.total > 0 && s.ok / s.total < 0.7);
+  if (!weak.length) return '<div class="weak-ok">🎉 Все темы усвоены отлично! Так держать.</div>';
+  const chips = weak
+    .sort((a, b) => a[1].ok / a[1].total - b[1].ok / b[1].total)
+    .map(([name, s]) => `<span class="weak-chip">${name} — ${s.ok}/${s.total} (${Math.round(100 * s.ok / s.total)}%)</span>`)
+    .join("");
+  return `<div class="weak-title">📉 Плохо решённые темы (повтори):</div><div class="weak-chips">${chips}</div>`;
+}
+
 function checkGroup(groupId) {
   const groupEl = document.querySelector(`.quiz[data-group="${groupId}"]`);
   if (!groupEl) return;
   const questions = groupEl.querySelectorAll(".question");
   let score = 0, total = 0, correctCount = 0;
+  const stats = {}; // тема -> {total, ok}
 
   questions.forEach((qEl) => {
     const id = qEl.dataset.qid;
@@ -530,6 +591,10 @@ function checkGroup(groupId) {
       const attempted = type === "multiple" ? (chosen instanceof Set && chosen.size > 0) : chosen >= 0;
       if (attempted) wrongAdd(id);
     }
+    const label = topicLabelOf(id, item);
+    if (!stats[label]) stats[label] = { total: 0, ok: 0 };
+    stats[label].total++;
+    if (ok) stats[label].ok++;
     const flag = qEl.querySelector(".flag");
     const solution = qEl.querySelector(".solution");
     qEl.querySelectorAll(".opt").forEach((el, i) => {
@@ -560,7 +625,11 @@ function checkGroup(groupId) {
   if (banner) banner.remove();
   const div = document.createElement("div");
   div.className = "result-banner";
-  div.innerHTML = `Результат: <b>${score} из ${total} баллов</b> (заданий верно: ${correctCount} из ${questions.length}) ${score === total ? "🎉 Отлично!" : "— посмотри решения и повтори."}`;
+  const elapsed = quizStart[groupId] ? fmtTime((Date.now() - quizStart[groupId]) / 1000) : "—";
+  div.innerHTML = `
+    <div class="result-main">Результат: <b>${score} из ${total} баллов</b> (заданий верно: ${correctCount} из ${questions.length}) ${score === total ? "🎉 Отлично!" : "— посмотри решения и повтори."}</div>
+    <div class="result-time">⏱ Время прохождения: <b>${elapsed}</b></div>
+    ${weakTopicsHtml(stats)}`;
   groupEl.prepend(div);
   recordTest(groupId, score, total);
 }
@@ -789,6 +858,7 @@ function regenTrain(catId) {
   _trainPools["train-" + catId] = pool;
   Object.keys(quizState).forEach((k) => { if (k.startsWith("train-" + catId + "-")) delete quizState[k]; });
   Object.keys(_quizItems).forEach((k) => { if (k.startsWith("train-" + catId + "-")) delete _quizItems[k]; });
+  quizStart["train-" + catId] = Date.now();
   const box = document.getElementById("tr-" + catId);
   if (box) { box.innerHTML = renderQuiz(pool, "train-" + catId); afterRender(); }
 }
@@ -936,7 +1006,7 @@ function renderHomeStats() {
     <div class="card" style="margin-top:14px">
       <h3>❌ Работа над ошибками</h3>
       <div class="progress-num">В списке повторения: <b>${wKeys.length}</b> заданий</div>
-      ${wKeys.length ? '<button class="btn small" style="margin-top:8px" onclick="goTo(\'errors\')">Перейти к повторению</button>' : ""}
+      ${wKeys.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn small" onclick="goTo(\'errors\')">Перейти к повторению</button><button class="btn small ghost" onclick="wrongClear()">🧹 Очистить</button></div>' : ""}
     </div>`;
   return html;
 }
@@ -1375,7 +1445,7 @@ function wrongForget(n) {
 function wrongClear() {
   if (!confirm("Убрать все задания из списка ошибок?")) return;
   lsSet(LS_WRONG, {});
-  renderErrors();
+  if (currentView === "errors") renderErrors(); else render();
 }
 
 function goTo(view) {
