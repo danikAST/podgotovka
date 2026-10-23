@@ -454,6 +454,7 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 function typeBadge(type) {
   if (type === "multiple") return '<span class="type-badge multiple">🧩 Выбор нескольких</span>';
   if (type === "situational") return '<span class="type-badge situational">🗣 Ситуационная задача</span>';
+  if (type === "hard") return '<span class="type-badge hard">🔴 Сложный</span>';
   return '<span class="type-badge single">◯ Один ответ</span>';
 }
 
@@ -467,7 +468,7 @@ function renderQuiz(items, groupId, startNum) {
     const num = startNum ? startNum + idx : null;
     html += `
       <div class="question" data-qid="${id}">
-        <div class="q-text">${num ? `<span class="task-num">Задание ${num}</span>` : ""} ${typeBadge(type)} ${item.q}</div>
+        <div class="q-text">${num ? `<span class="task-num">Задание ${num}</span>` : ""} ${typeBadge(type)} ${item.difficulty === "hard" ? '<span class="type-badge hard">🔴 Сложный</span>' : ""} ${item.q}</div>
         ${item.figure ? `<div class="figure">${item.figure}</div>` : ""}
         <div class="options">`;
     item.options.forEach((opt, i) => {
@@ -688,6 +689,70 @@ const GEN_TASKS = {
     const s = (n * (n + 1)) / 2;
     const { options, correct } = mkOptions(s, [s - n, s + n, n * n]);
     return { vars: { n }, options, correct, solution: `Сумма арифметической прогрессии: (1+${n})×${n}/2 = ${s}.` };
+  },
+  /* ---------- Сложный уровень ---------- */
+  sys_eq() {
+    const x = ri(2, 9), y = ri(1, x - 1);
+    const s = x + y, d = x - y;
+    const { options, correct } = mkOptions(x, [x + 1, y, x - 1, s]);
+    return { vars: { s, d }, options, correct, solution: `Складываем уравнения: 2x = ${s} + ${d} = ${2 * x} → x = ${x}.` };
+  },
+  geom_prog() {
+    const b = ri(2, 5);
+    const s4 = b * (16 - 1);
+    const { options, correct } = mkOptions(s4, [s4 - b, s4 + b, b * 8]);
+    return { vars: { b }, options, correct, solution: `S₄ = b₁·(q⁴ − 1)/(q − 1) = ${b}·(16 − 1)/1 = ${s4}.` };
+  },
+  deriv() {
+    const a = ri(2, 5), pt = ri(1, 5);
+    const k = ri(1, 2 * a * pt - 1);
+    const res = 2 * a * pt - k;
+    const dx = k === 1 ? "− x" : "− " + k + "x";
+    const { options, correct } = mkOptions(res, [res + 1, res - 1, 2 * a]);
+    return { vars: { a, dx, x: pt }, options, correct, solution: `f′(x) = 2·${a}x − ${k} = ${2 * a}x − ${k}. При x = ${pt}: ${2 * a}·${pt} − ${k} = ${res}.` };
+  },
+  interval_ineq() {
+    const a = ri(2, 6), k = ri(1, 6);
+    const b = a * k;
+    const { options, correct } = mkOptions("x < " + k, ["x > " + k, "x < " + (k + 1), "x > " + (k - 1)]);
+    return { vars: { a, b }, options, correct, solution: `−${a}x + ${b} > 0 → −${a}x > −${b}. Делим на −${a} (знак меняется): x < ${k}.` };
+  },
+  move_prob() {
+    const S = ri(3, 8) * 8;
+    const u = S / 8;
+    const { options, correct } = mkOptions(u, [u + 1, u - 1, u * 2]);
+    return { vars: { S, tp: 2, pr: 4 }, options, correct, solution: `По течению: v + u = ${S}/2 = ${S / 2}; против: v − u = ${S}/4 = ${S / 4}. Разность: 2u = ${S / 4} → u = ${u}.` };
+  },
+  loop_trace() {
+    const n = ri(3, 6), m = ri(2, 4);
+    const res = m * n * (n + 1) / 2;
+    const { options, correct } = mkOptions(res, [res - m, res + m, m * n]);
+    return { vars: { n, m }, options, correct, solution: `x = ${m}·(1+2+…+${n}) = ${m}·${n}·${n + 1}/2 = ${res}.` };
+  },
+  bin_sub() {
+    const v1 = ri(8, 20), v2 = ri(2, v1 - 1);
+    const sub = v1 - v2;
+    const b1 = v1.toString(2), b2 = v2.toString(2), bs = sub.toString(2);
+    const decoys = [sub.toString(2).replace(/0$/, "1"), (sub + 1).toString(2), v1.toString(2).slice(0, -1)];
+    const { options, correct } = mkOptions(bs, decoys);
+    return { vars: { b1, b2 }, options, correct, solution: `${b1}₂ = ${v1}, ${b2}₂ = ${v2}. ${v1}−${v2}=${sub} = ${bs}₂.` };
+  },
+  logic2() {
+    const x = ri(0, 1), y = ri(0, 1), z = ri(0, 1);
+    const res = (x & y) | ((1 - x) & z);
+    const { options, correct } = mkOptions(res, [1 - res, "x", "y"]);
+    return { vars: { x, y, z }, options, correct, solution: `Сначала скобки: (${x} ∧ ${y}) = ${x & y}; (¬${x} ∧ ${z}) = ${(1 - x) & z}. Итого: ${res}.` };
+  },
+  code_bits() {
+    const N = [8, 16, 32, 64, 128][ri(0, 4)];
+    const i = Math.log2(N);
+    const { options, correct } = mkOptions(i, [i + 1, i - 1, i * 2]);
+    return { vars: { N }, options, correct, solution: `N = 2ⁱ → ${N} = 2^${i} → i = ${i} бит.` };
+  },
+  file_size() {
+    const K = ri(50, 500);
+    const { options, correct } = mkOptions(K, [K * 8, K + 8, K - 50]);
+    return { vars: { K }, options, correct, solution: `Алфавит 256 символов = 1 байт на символ. ${K}·1 = ${K} байт.` };
   }
 };
 
@@ -1231,7 +1296,7 @@ function renderErrors() {
     }
     const type = item.type || "single";
     html += `<div class="card"><div class="question" data-qid="err-${n}" data-full="${entry.fullId}">
-      <div class="q-text"><span class="task-num">Повтор №${entry.count}</span> ${typeBadge(type)} ${item.q}</div>
+      <div class="q-text"><span class="task-num">Повтор №${entry.count}</span> ${typeBadge(type)} ${item.difficulty === "hard" ? '<span class="type-badge hard">🔴 Сложный</span>' : ""} ${item.q}</div>
       ${item.figure ? `<div class="figure">${item.figure}</div>` : ""}
       <div class="options">`;
     item.options.forEach((opt, j) => {

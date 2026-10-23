@@ -234,6 +234,7 @@ th { color: var(--accent); font-size: 13.5px; }
 .type-badge.multiple { background: rgba(166,227,161,.15); color: #a6e3a1; }
 .type-badge.situational { background: rgba(249,226,175,.15); color: #f9e2af; }
 .type-badge.level { background: rgba(203,166,247,.15); color: #cba6f7; }
+.type-badge.hard { background: rgba(243,139,168,.18); color: #f38ba8; }
 .sec-badge {
   display: inline-block;
   font-size: 11px;
