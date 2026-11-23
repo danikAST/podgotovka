@@ -296,7 +296,7 @@ function update(dt){
  if(over)return;
  if(transition>0){transition-=dt;if(transition<=0){if(levelIndex+1>=LEVELS.length)finish(true);else buildLevel(levelIndex+1);}return;}
  attackCd=Math.max(0,attackCd-dt);hitCd=Math.max(0,hitCd-dt);energy=clamp(energy+dt*7,0,100);
- const ix=(keys.KeyW?1:0)-(keys.KeyS?1:0)-joyVecY,iz=(keys.KeyD?1:0)-(keys.KeyA?1:0)+joyVecX;
+ const ix=((keys.KeyW||keys.ArrowUp)?1:0)-((keys.KeyS||keys.ArrowDown)?1:0)-joyVecY,iz=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0)+joyVecX;
  const fx=-Math.sin(camYaw),fz=-Math.cos(camYaw),rx=Math.cos(camYaw),rz=-Math.sin(camYaw);
  let mx=fx*ix+rx*iz,mz=fz*ix+rz*iz;const ml=Math.hypot(mx,mz);
  const sprint=keys.ShiftLeft||keys.ShiftRight||mobile.run,sp=sprint?13:8;
@@ -435,5 +435,6 @@ $('restartBtn').addEventListener('click',()=>{$('endScreen').classList.add('hidd
 setTimeout(()=>$('loading').classList.add('hidden'),600);
 resetGame();requestAnimationFrame(loop);
 setTimeout(()=>composer.render(),60);
+window.__dbg=()=>({x:player.position.x,z:player.position.z,y:player.position.y,vx:vel.x,vz:vel.z,keys:JSON.stringify(keys),started:started,over:over,transition:transition,time:time,last:last,camYaw:camYaw,joy:[joyVecX,joyVecY],ml:Math.hypot(vel.x,vel.z)});
 setTimeout(()=>composer.render(),160);
 })();
