@@ -131,9 +131,9 @@ const LEVELS = [
 
 // ---------- СЛОЖНОСТЬ ----------
 const DIFF = {
-  easy:   { lives:5, speed:0.008, name:"Лёгкая" },
-  normal: { lives:3, speed:0.012, name:"Средняя" },
-  hard:   { lives:2, speed:0.018, name:"Сложная" },
+  easy:   { lives:5, speed:0.006, name:"Лёгкая" },
+  normal: { lives:3, speed:0.009, name:"Средняя" },
+  hard:   { lives:2, speed:0.013, name:"Сложная" },
 };
 
 // ---------- Состояние ----------
@@ -227,7 +227,7 @@ function updateEnemies(dt){
     if(e.state==="patrol" && distX < 6 && distY < 2.5) e.state = "attack";
     if(e.state==="attack" && distX > 9) e.state = "patrol";
     const base = e.speed * tile * 60 * dt;
-    const spd = base * (e.state==="attack" ? 1.12 : 1);
+    const spd = base * (e.state==="attack" ? 1.05 : 1);
     let vx = 0;
     if(e.state==="patrol"){
       vx = e.dir * spd;
@@ -262,13 +262,13 @@ function tryAttack(){
   if(S.swing>0 || !S.running || P.dead) return;
   S.swing = 0.32;
   beep(260,0.08,"square",0.05);
-  const cx = P.x + P.w/2 + P.dir*0.75;
+  const cx = P.x + P.w/2 + P.dir*0.85;
   const cy = P.y + P.h*0.45;
   for(const e of ENEMIES){
     if(!e.alive) continue;
     const ex = e.x+e.w/2, ey = e.y+e.h/2;
-    if(Math.abs(ex-cx) < 1.0 && Math.abs(ey-cy) < 1.25){
-      e.hp--; e.flash = 0.25;
+    if(Math.abs(ex-cx) < 1.5 && Math.abs(ey-cy) < 1.6){
+      e.hp -= 2; e.flash = 0.25;
       e.kbDir = Math.sign(ex - P.x) || P.dir;
       e.kb = 0.3;
       if(e.hp <= 0){
