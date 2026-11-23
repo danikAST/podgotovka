@@ -299,13 +299,21 @@ addDecor('startPositions', function (m) {
 });
 
 /* --- гонщики --- */
+function loadProgress() {
+  var btn = document.getElementById('startBtn');
+  if (btn.disabled) btn.textContent = '⏳ Загрузка 3D… ' + carsReady + '/' + carsNeed;
+}
 function spawnPlayer(m) {
   player.mesh = m; scene.add(m); player.ready = true; carsReady++;
+  placeCar(player, START_A, 0, 0, 0);
+  updateCamera();
+  loadProgress();
   maybeReady();
 }
 function spawnRival(m, speed) {
   var r = { a: START_A + Math.random()*3 - 1.5, dr: (Math.random()*2-1)*2.5, v: speed, mesh: m };
   scene.add(m); rivals.push(r); carsReady++;
+  loadProgress();
   maybeReady();
 }
 function maybeReady() {
