@@ -134,9 +134,9 @@ const LEVELS = [
 
 // ---------- СЛОЖНОСТЬ ----------
 const DIFF = {
-  easy:   { lives:5, speed:0.0035, name:"Лёгкая" },
-  normal: { lives:3, speed:0.005, name:"Средняя" },
-  hard:   { lives:2, speed:0.008, name:"Сложная" },
+  easy:   { lives:5, speed:0.0012, name:"Лёгкая" },
+  normal: { lives:3, speed:0.0017, name:"Средняя" },
+  hard:   { lives:2, speed:0.0027, name:"Сложная" },
 };
 
 // ---------- Состояние ----------
@@ -270,7 +270,7 @@ function tryAttack(){
   for(const e of ENEMIES){
     if(!e.alive) continue;
     const ex = e.x+e.w/2, ey = e.y+e.h/2;
-    if(Math.abs(ex-cx) < 1.7 && Math.abs(ey-cy) < 1.8){
+    if(Math.abs(ex-cx) < 4.6 && Math.abs(ey-cy) < 2.2){
       e.hp -= 2; e.flash = 0.25;
       e.kbDir = Math.sign(ex - P.x) || P.dir;
       e.kb = 0.3;
@@ -526,11 +526,11 @@ function drawPlayer(){
   // рука
   ctx.fillStyle="#f5e0dc";
   ctx.fillRect(-2, -2, w*0.22, 4);
-  // клинок
+  // клинок (большой)
   ctx.fillStyle="#cdd6f4";
-  ctx.fillRect(0, -1.5, w*1.15, 3);
+  ctx.fillRect(0, -2, w*2.9, 4);
   ctx.fillStyle="#a6e3a1";
-  ctx.fillRect(w*1.15, -1.5, w*0.12, 3);
+  ctx.fillRect(w*2.9, -2, w*0.25, 4);
   ctx.restore();
   ctx.restore();
 }
