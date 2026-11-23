@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>3D-Гонки</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0d1220; font-family:Segoe UI, Roboto, Arial, sans-serif; }
+  #c { display:block; width:100%; height:100%; }
+  #hud { position:fixed; top:14px; left:14px; right:14px; display:flex; gap:14px; align-items:center;
+         background:rgba(13,18,32,.55); padding:10px 16px; border-radius:14px; border:1px solid rgba(137,180,250,.3);
+         backdrop-filter:blur(8px); color:#cdd6f4; font-size:15px; z-index:5; }
+  #hud b { color:#f9e2af; font-size:17px; }
+  .h { flex:1; }
+  #overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10;
+             background:rgba(13,18,32,.72); backdrop-filter:blur(10px); animation:fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+  #box { text-align:center; max-width:560px; padding:30px 34px; }
+  #box h1 { font-family:Georgia,"Times New Roman",serif; font-size:44px; font-weight:700; letter-spacing:1px; margin-bottom:10px;
+             background:linear-gradient(135deg,#89b4fa,#f9e2af 55%,#a6e3a1); -webkit-background-clip:text; background-clip:text; color:transparent;
+             filter:drop-shadow(0 3px 12px rgba(0,0,0,.55)); }
+  #box p { color:#a6adc8; font-size:15px; line-height:1.55; margin-bottom:20px; }
+  .k { display:inline-block; background:#313244; border:1px solid #45475a; border-radius:8px; padding:2px 10px; margin:2px; font-size:13px; color:#cdd6f4; }
+  #btn { font-size:21px; font-weight:700; padding:14px 48px; border:0; border-radius:14px; cursor:pointer; color:#11111b;
+         background:linear-gradient(135deg,#f9e2af,#f2c96c); box-shadow:0 6px 24px rgba(249,226,175,.35); transition:transform .15s, box-shadow .15s; }
+  #btn:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(249,226,175,.45); }
+  #btn:active { transform:translateY(0); }
+  #btn:focus-visible { outline:2px solid #f9e2af; outline-offset:3px; }
+  #msg { position:fixed; left:50%; top:22%; transform:translateX(-50%); font-size:20px; font-weight:700; color:#f9e2af;
+         text-shadow:0 2px 10px rgba(0,0,0,.6); z-index:6; pointer-events:none; opacity:0; transition:opacity .25s; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <span class="h">⏱ <b id="tm">0:00</b></span>
+  <span class="h">🏁 <b id="laps">1/2</b></span>
+  <span class="h">⭐ <b id="pts">0</b></span>
+  <span>🚗 <b id="kmh">0</b> км/ч</span>
+</div>
+<div id="msg"></div>
+<div id="overlay">
+  <div id="box">
+    <h1>3D-ГОНКИ</h1>
+    <p>Пройди <b>2 круга</b> и собери как можно больше монет!<br>
+       <span class="k">↑</span> газ &nbsp; <span class="k">↓</span> тормоз &nbsp;
+       <span class="k">←→</span> руль<br>
+       <span class="k">W/S</span> и <span class="k">A/D</span> — то же самое.<br>
+       <span class="k">Пробел</span> — нитро (разгон).</p>
+    <button id="btn">🚦 СТАРТ</button>
+  </div>
+</div>
+<script src="three.min.js"></script>
+<script>
+/* ===== 3D-ГОНКИ: three.js ===== */
+let renderer, scene, camera, car, wheels = [], coins = [], cones = [];
+let keys = {};
+let state = "menu"; // menu | race | win
+let T = 0, lap = 0, pts = 0, impact = 0;
+// машина: угол theta на кольце + радиальное смещение dr
+let theta = 0, dr = 0, v = 0;
+const R = 62, ROAD = 7.5, MAXV = 34, ACC = 26, BRK = 40, STEER = 1.9, LAPS = 2;
+
+const $ = id => document.getElementById(id);
+const tmEl = $("tm"), lapsEl = $("laps"), ptsEl = $("pts"), kmhEl = $("kmh");
+const overlay = $("overlay"), box = $("box"), btn = $("btn"), msg = $("msg");
+const BEEP = (f, dur, type, vol) => { try { const a = new AudioContext(); const o = a.createOscillator(), g = a.createGain();
+  o.type = type || "square"; o.frequency.value = f; g.gain.value = vol || .08;
+  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + (dur||.15)); } catch(e){} };
+
+/* --- Небо-градиент (CanvasTexture) --- */
+function makeSky() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 256;
+  const g = c.getContext("2d");
+  const gr = g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,"#7db8e8"); gr.addColorStop(.55,"#cfe6f5"); gr.addColorStop(.85,"#e8f2f8"); gr.addColorStop(1,"#cfe0ee");
+  g.fillStyle = gr; g.fillRect(0,0,64,256);
+  const tx = new THREE.CanvasTexture(c);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(520,24,18), new THREE.MeshBasicMaterial({map:tx, side:THREE.BackSide, fog:false}));
+  sky.renderOrder = -1;
+  return sky;
+}
+/* --- Трава (CanvasTexture) --- */
+function makeGrass() {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d");
+  g.fillStyle = "#4e8a4f"; g.fillRect(0,0,256,256);
+  for(let i=0;i<260;i++){
+    g.fillStyle = Math.random()<.5 ? "#5b9a5c" : "#438043";
+    const s = 2+Math.random()*7;
+    g.fillRect(Math.random()*256, Math.random()*256, s, s);
+  }
+  const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(14,14);
+  return tx;
+}
+/* --- Машина --- */
+function buildCar() {
+  const grp = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, .75, 4.2),
+    new THREE.MeshStandardMaterial({color:0x3b82f6, roughness:.25, metalness:.5}));
+  body.position.y = .55; body.castShadow = true; grp.add(body);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.7, .5, 1.9),
+    new THREE.MeshStandardMaterial({color:0x2563eb, roughness:.3, metalness:.4}));
+  roof.position.set(0, 1.1, -.25); roof.castShadow = true; grp.add(roof);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.3, .08, .7),
+    new THREE.MeshStandardMaterial({color:0x1e293b, roughness:.5, metalness:.6}));
+  wing.position.set(0, .85, -1.9); grp.add(wing);
+  for(const [x,z] of [[-1.15,1.35],[1.15,1.35],[-1.15,-1.35],[1.15,-1.35]]){
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.42,16),
+      new THREE.MeshStandardMaterial({color:0x0f172a, roughness:.8}));
+    w.position.set(x,.42,z); w.rotation.z = Math.PI/2; w.castShadow = true;
+    grp.add(w); wheels.push(w);
+  }
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(.5,.2,.1), new THREE.MeshStandardMaterial({color:0xfff6d8, emissive:0xfff3b0, emissiveIntensity:.8}));
+  lamp.position.set(0,.55,2.12); grp.add(lamp);
+  return grp;
+}
+/* --- Дорога-кольцо (torus) --- */
+function buildRoad() {
+  const road = new THREE.Mesh(new THREE.TorusGeometry(R, ROAD, 8, 160),
+    new THREE.MeshStandardMaterial({color:0x353b4d, roughness:.95}));
+  road.rotation.x = Math.PI/2; road.receiveShadow = true;
+  const g = new THREE.Group(); g.add(road);
+  // разметка: белые метки
+  const markMat = new THREE.MeshStandardMaterial({color:0xe8e8e8, roughness:.8});
+  for(let i=0;i<48;i++){
+    const a = i/48*Math.PI*2;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(.6,.05,2.2), markMat);
+    m.position.set(Math.cos(a)*R, .03, Math.sin(a)*R); m.rotation.y = -a;
+    g.add(m);
+  }
+  // бордюры: столбики по краям
+  const poleMat = new THREE.MeshStandardMaterial({color:0xf38ba8, roughness:.5});
+  for(let i=0;i<72;i++){
+    const a = i/72*Math.PI*2;
+    for(const rr of [R-ROAD, R+ROAD]){
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,1.1,6), poleMat);
+      p.position.set(Math.cos(a)*rr, .55, Math.sin(a)*rr); p.castShadow = true;
+      g.add(p);
+    }
+  }
+  return g;
+}
+/* --- Монеты --- */
+function buildCoins() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:0xf9e2af, metalness:.7, roughness:.2, emissive:0x6b5400, emissiveIntensity:.25});
+  for(let i=0;i<26;i++){
+    const a = (i/26)*Math.PI*2 + .4;
+    const s = Math.sin(i*2.7)*ROAD*.4;
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,.25,20), mat);
+    c.position.set(Math.cos(a)*(R+s), 2.1, Math.sin(a)*(R+s));
+    c.rotation.z = Math.PI/2; c.castShadow = true;
+    g.add(c); coins.push({m:c, a, s});
+  }
+  return g;
+}
+/* --- Конусы-препятствия --- */
+function buildCones() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:0xff6b35, roughness:.5});
+  for(let i=0;i<16;i++){
+    const a = (i/16)*Math.PI*2 + .2;
+    const s = (i%2 ? -1 : 1)*ROAD*.45;
+    const c = new THREE.Mesh(new THREE.ConeGeometry(.8,1.8,8), mat);
+    c.position.set(Math.cos(a)*(R+s), .9, Math.sin(a)*(R+s)); c.castShadow = true;
+    g.add(c); cones.push({m:c, a, s});
+  }
+  return g;
+}
+
+function init() {
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.insertBefore(renderer.domElement, document.body.firstChild);
+  renderer.domElement.id = "c";
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xcfe6f5, 90, 420);
+  camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, .1, 1000);
+  scene.add(makeSky());
+  const grass = new THREE.Mesh(new THREE.PlaneGeometry(700,700), new THREE.MeshStandardMaterial({map:makeGrass(), roughness:1}));
+  grass.rotation.x = -Math.PI/2; grass.position.y = -.1; grass.receiveShadow = true; scene.add(grass);
+  scene.add(buildRoad()); scene.add(buildCoins()); scene.add(buildCones());
+  car = buildCar(); scene.add(car);
+  const amb = new THREE.AmbientLight(0x5577aa, .55); scene.add(amb);
+  const sun = new THREE.DirectionalLight(0xfff2dd, 1.25);
+  sun.position.set(120, 160, 80); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-160; sun.shadow.camera.right=160;
+  sun.shadow.camera.top=160; sun.shadow.camera.bottom=-160; sun.shadow.camera.far=500;
+  scene.add(sun);
+  addEventListener("keydown", e => { keys[e.code] = true; if(e.code==="Space") e.preventDefault(); });
+  addEventListener("keyup", e => { keys[e.code] = false; });
+  addEventListener("resize", () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  btn.onclick = start;
+}
+
+function start() {
+  state = "race"; T = 0; lap = 0; pts = 0; theta = 0; dr = 0; v = 0;
+  updateHud(); overlay.style.display = "none";
+  for(const c of coins) c.m.visible = true;
+}
+
+function updateHud() {
+  tmEl.textContent = Math.floor(T/60) + ":" + String(Math.floor(T%60)).padStart(2,"0");
+  lapsEl.textContent = (lap+1) + "/" + LAPS;
+  ptsEl.textContent = pts;
+  kmhEl.textContent = Math.round(Math.abs(v)*4.2);
+}
+
+function flashMsg(t, ms) {
+  msg.textContent = t; msg.style.opacity = 1;
+  setTimeout(() => msg.style.opacity = 0, ms || 1100);
+}
+
+function update(dt) {
+  if(state !== "race") return;
+  T += dt;
+  // управление
+  const gas = keys["ArrowUp"] || keys["KeyW"];
+  const brk = keys["ArrowDown"] || keys["KeyS"];
+  const left = keys["ArrowLeft"] || keys["KeyA"];
+  const right = keys["ArrowRight"] || keys["KeyD"];
+  const nitro = keys["Space"];
+  const maxV = MAXV * (nitro ? 1.5 : 1);
+  if(gas) v = Math.min(v + ACC*dt, maxV); else v = Math.max(v - 10*dt, 0);
+  if(brk) v = Math.max(v - BRK*dt, -12);
+  if(left) dr -= STEER*dt*(.4 + Math.abs(v)/MAXV*.6);
+  if(right) dr += STEER*dt*(.4 + Math.abs(v)/MAXV*.6);
+  v *= (1 - .04*dt*Math.abs(dr)/ROAD); // трение
+  if(impact > 0) { v *= Math.max(0, 1 - 3*dt); impact -= dt; }
+  dr = Math.max(-ROAD*0.8, Math.min(ROAD*0.8, dr));
+  theta += (v/R)*dt;
+  // позиция
+  const px = Math.cos(theta)*(R+dr), pz = Math.sin(theta)*(R+dr);
+  car.position.set(px, .1, pz);
+  car.rotation.y = -theta + Math.PI/2;
+  for(let i=0;i<4;i++) wheels[i].rotation.x += (v/R)*dt*9;
+  // монеты
+  for(const c of coins){
+    if(!c.m.visible) continue;
+    const cxp = Math.cos(c.a)*(R+c.s), czp = Math.sin(c.a)*(R+c.s);
+    if((px-cxp)**2 + (pz-czp)**2 < 6){
+      c.m.visible = false; pts += 100; BEEP(880,.12,"triangle",.08); updateHud();
+    }
+  }
+  // конусы
+  for(const c of cones){
+    const cxp = Math.cos(c.a)*(R+c.s), czp = Math.sin(c.a)*(R+c.s);
+    if((px-cxp)**2 + (pz-czp)**2 < 5){
+      impact = .5; BEEP(160,.3,"sawtooth",.12); flashMsg("💥 Столкновение!", 900);
+    }
+  }
+  // круги
+  const prev = theta - (v/R)*dt;
+  if(prev < -Math.PI*.5 && theta >= -Math.PI*.5) { lap++; flashMsg("🏁 Круг " + (lap+1) + "!", 1000); BEEP(660,.18,"triangle",.1); }
+  if(lap >= LAPS) { state = "win"; win(); }
+  updateHud();
+}
+
+function win() {
+  overlay.style.display = "flex";
+  box.innerHTML = "<h1>🏆 ПОБЕДА!</h1><p>Время: <b>" + tmEl.textContent + "</b>&nbsp;·&nbsp;Очки: <b>" + pts + "</b></p><button id='btn'>🔄 Ещё раз</button>";
+  $("btn").onclick = start;
+}
+
+function render() {
+  // камера за машиной
+  const cx = Math.cos(theta), cz = Math.sin(theta);
+  const backX = -cx, backZ = -cz;
+  camera.position.set(car.position.x + backX*14, 6.5, car.position.z + backZ*14);
+  camera.lookAt(car.position.x - backX*4, 2, car.position.z - backZ*4);
+  for(const c of coins) if(c.m.visible) c.m.rotation.y += 0.05;
+  renderer.render(scene, camera);
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  update(1/60);
+  render();
+}
+
+init(); loop();
+</script>
+</body>
+</html>
