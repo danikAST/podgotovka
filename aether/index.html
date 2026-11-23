@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>AETHER — Остров артефактов</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div>
+    <div id="levelBanner" class="level-banner hidden"></div>
+    <div class="hud-top">
+      <div class="panel stats">
+        <div class="bar-row"><span class="bar-label">ЗДОРОВЬЕ</span>
+          <div class="bar"><div id="hpFill" class="fill hp"></div></div><span id="hpText" class="bar-num">100</span></div>
+        <div class="bar-row"><span class="bar-label">ЭНЕРГИЯ</span>
+          <div class="bar"><div id="enFill" class="fill en"></div></div><span id="enText" class="bar-num">100</span></div>
+      </div>
+      <div class="panel score">
+        <div class="score-line"><span>ОЧКИ</span><b id="scoreText">0</b></div>
+        <div class="score-line small"><span>АРТЕФАКТЫ</span><b id="crystalText">0 / 8</b></div>
+        <div class="score-line small"><span>ВРАГИ</span><b id="killText">0</b></div>
+        <div class="score-line small"><span>УРОВЕНЬ</span><b id="levelText">1 / 3</b></div>
+      </div>
+    </div>
+
+    <div id="objective" class="objective">Собери все артефакты на острове</div>
+
+    <div class="hud-bottom">
+      <div class="panel controls-hint">
+        <b>WASD</b> движение · <b>Shift</b> бег · <b>Space</b> прыжок · <b>E/ЛКМ</b> огонь · <b>Q</b> импульс · <b>мышь</b> прицел
+      </div>
+      <canvas id="minimap" width="150" height="150"></canvas>
+    </div>
+
+    <div id="mobileControls" class="mobile-controls">
+      <div id="joystick" class="joystick"><div id="joystickKnob" class="knob"></div></div>
+      <div class="mobile-buttons">
+        <button id="btnAttack" class="mbtn attack">АТАКА</button>
+        <button id="btnJump" class="mbtn">ПРЫЖОК</button>
+        <button id="btnRun" class="mbtn">БЕГ</button>
+        <button id="btnPulse" class="mbtn">ИМПУЛЬС</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="startScreen" class="screen">
+    <div class="screen-card">
+      <div class="logo">AETHER</div>
+      <div class="subtitle">ОСТРОВ АРТЕФАКТОВ</div>
+      <p class="story">Ты — исследователь, высадившийся на загадочный остров. Древние артефакты разбросаны по территории, а ее охраняют энергетические сторожевые дроны. Собери все артефакты и активируй портал, чтобы выбраться.</p>
+      <div class="control-grid">
+        <div><kbd>W A S D</kbd><span>Движение</span></div>
+        <div><kbd>Shift</kbd><span>Бег</span></div>
+        <div><kbd>Space</kbd><span>Прыжок</span></div>
+        <div><kbd>E</kbd><span>Энергоудар</span></div>
+        <div><kbd>Мышь</kbd><span>Камера</span></div>
+        <div><kbd>Колесо</kbd><span>Зум</span></div>
+      </div>
+      <button id="startBtn" class="big-btn">НАЧАТЬ ЭКСПЕДИЦИЮ</button>
+      <div class="footnote">3D-проект · Three.js · WebGL</div>
+    </div>
+  </div>
+
+  <div id="endScreen" class="screen hidden">
+    <div class="screen-card">
+      <div id="endTitle" class="logo">ПОБЕДА</div>
+      <div id="endSubtitle" class="subtitle">ПОРТАЛ АКТИВИРОВАН</div>
+      <p id="endText" class="story"></p>
+      <div id="endStats" class="end-stats"></div>
+      <button id="restartBtn" class="big-btn">ИГРАТЬ СНОВА</button>
+    </div>
+  </div>
+
+  <div id="loading" class="screen">
+    <div class="loader"><div class="spinner"></div><span>Загрузка мира...</span></div>
+  </div>
+</div>
+<script src="lib/three.min.js"></script>
+<script src="lib/post/CopyShader.js"></script>
+<script src="lib/post/LuminosityHighPassShader.js"></script>
+<script src="lib/post/EffectComposer.js"></script>
+<script src="lib/post/RenderPass.js"></script>
+<script src="lib/post/ShaderPass.js"></script>
+<script src="lib/post/UnrealBloomPass.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
