@@ -23,6 +23,8 @@
   .dbtn.sel { border-color:#89b4fa; background:#45475a; color:#89b4fa; }
   #ovBtn { font-size:20px; padding:12px 34px; border:none; border-radius:10px; background:#89b4fa; color:#11111b; font-weight:700; cursor:pointer; }
   #ovBtn:hover { background:#a6d0ff; }
+  #ovBtn2 { font-size:20px; padding:12px 34px; border:none; border-radius:10px; background:#a6e3a1; color:#11111b; font-weight:700; cursor:pointer; margin-left:12px; }
+  #ovBtn2:hover { background:#bff0bb; }
   .sub { font-size:14px; color:#a6adc8; margin-top:8px; }
   #touch { position:fixed; inset:0; pointer-events:none; z-index:4; display:none; }
   .tbtn { position:fixed; bottom:30px; width:76px; height:76px; border-radius:50%; background:rgba(137,180,250,.25); border:2px solid rgba(137,180,250,.55); color:#cdd6f4; font-size:30px; display:flex; align-items:center; justify-content:center; pointer-events:auto; user-select:none; touch-action:none; }
@@ -52,6 +54,7 @@
     <button class="dbtn" data-diff="hard">🔴 Сложная</button>
   </div>
   <button id="ovBtn">▶ Играть</button>
+  <button id="ovBtn2" style="display:none">⚡ Возродиться</button>
   <div class="sub" id="ovSub"></div>
 </div>
 <script>
@@ -61,7 +64,7 @@ const ctx = cv.getContext("2d");
 const UI = { score: document.getElementById("score"), lives: document.getElementById("lives"),
              lvl: document.getElementById("lvl") };
 const OV = { el: document.getElementById("overlay"), title: document.getElementById("ovTitle"),
-              text: document.getElementById("ovText"), btn: document.getElementById("ovBtn"),
+              text: document.getElementById("ovText"), btn: document.getElementById("ovBtn"), btn2: document.getElementById("ovBtn2"),
               sub: document.getElementById("ovSub") };
 
 // ---------- УРОВНИ ----------
@@ -294,6 +297,7 @@ function update(dt){
   if(ax!==0) P.dir = ax>0?1:-1;
   if(KEYS["KeyX"]||KEYS["KeyF"]||KEYS["KeyJ"]) tryAttack();
   S.swing = Math.max(0, S.swing - dt);
+  if(P.inv>0) P.inv -= dt;
   const accel = 0.05*tile, maxV = 0.24*tile, fric = 0.82;
   P.vx += ax*accel*60*dt;
   if(ax===0 && P.onGround) P.vx *= Math.pow(fric, 60*dt);
@@ -356,13 +360,21 @@ function hitPlayer(){
   puff(P.x+P.w/2, P.y+P.h/2, "rgba(243,139,168,.8)",24,3);
   if(S.lives <= 0){
     P.dead = true;
+    P.vx = 0; P.vy = 0;
     OV.title.textContent = "💀 Игра окончена";
-    OV.text.textContent = "Набрано очков: " + S.score + ". Попробуй ещё раз!";
+    OV.text.textContent = "Набрано очков: " + S.score + ". Возродись или начни заново!";
     OV.btn.textContent = "🔄 Заново";
     OV.btn.onclick = startGame;
+    OV.btn2.style.display = "inline-block";
+    OV.btn2.onclick = respawn;
     OV.sub.textContent = "";
     OV.el.style.display = "flex";
   }
+}
+
+function respawn(){
+  S.lives = DIFF[S.diff].lives;
+  loadLevel();
 }
 
 function nextLevel(){
@@ -379,11 +391,13 @@ function completeLevel(){
     OV.text.textContent = LEVELS[S.level].name + " позади. Счёт: " + S.score + ".";
     OV.btn.textContent = "Дальше → " + LEVELS[S.level+1].name;
     OV.btn.onclick = nextLevel;
+    OV.btn2.style.display = "none";
   } else {
     OV.title.textContent = "🏆 Победа!";
     OV.text.textContent = "Ты прошёл все уровни! Итоговый счёт: " + S.score + ".";
     OV.btn.textContent = "🔄 Играть заново";
     OV.btn.onclick = startGame;
+    OV.btn2.style.display = "none";
   }
   OV.sub.textContent = "";
   OV.el.style.display = "flex";
@@ -647,6 +661,7 @@ OV.title.textContent = "Приключения Рыцаря";
 OV.text.textContent = "Собери звёзды и доберись до флага. ПК: ←→/AD — бег, ↑/пробел — прыжок, X/F/J — меч. На телефоне — кнопки на экране.";
 OV.btn.textContent = "▶ Играть";
 OV.btn.onclick = startGame;
+OV.btn2.style.display = "none";
 OV.el.style.display = "flex";
 requestAnimationFrame(loop);
 
