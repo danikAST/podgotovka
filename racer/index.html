@@ -4,6 +4,7 @@
 <head>
   <title>МОИ ГОНКИ</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
   <link href="common.css" rel="stylesheet" type="text/css" />
 </head> 
 
@@ -22,10 +23,10 @@
   <div id="fps" style="display:none"></div>
   <div id="racer">
     <div id="hud">
-      <span id="speed"            class="hud"><span id="speed_value" class="value">0</span> mph</span>
-      <span id="current_lap_time" class="hud">Time: <span id="current_lap_time_value" class="value">0.0</span></span> 
-      <span id="last_lap_time"    class="hud">Last Lap: <span id="last_lap_time_value" class="value">0.0</span></span>
-      <span id="fast_lap_time"    class="hud">Fastest Lap: <span id="fast_lap_time_value" class="value">0.0</span></span>
+      <span id="speed" class="hud"><span id="speed_value" class="value">0</span> км/ч<span id="speed_fill_wrap"><span id="speed_fill"></span></span></span>
+      <span id="current_lap_time" class="hud">Круг: <span id="current_lap_time_value" class="value">0.0</span></span> 
+      <span id="last_lap_time"    class="hud">Прошлый круг: <span id="last_lap_time_value" class="value">0.0</span></span>
+      <span id="fast_lap_time"    class="hud">Лучший круг: <span id="fast_lap_time_value" class="value">0.0</span></span>
     </div>
     <canvas id="canvas">
       Sorry, this example cannot be run because your browser does not support the &lt;canvas&gt; element
@@ -216,6 +217,7 @@
       }
 
       updateHud('speed',            5 * Math.round(speed/500));
+      var sf = Dom.get('speed_fill'); if (sf) sf.style.width = Math.round(speed/maxSpeed*100) + '%';
       updateHud('current_lap_time', formatTime(currentLapTime));
     }
 

@@ -3,30 +3,48 @@
 html, body { height: 100%; }
 body {
   font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-  background: #1e1e2e; color: #cdd6f4;
+  background: radial-gradient(1200px 800px at 50% -10%, #2a2c40 0%, #1e1e2e 55%, #16161e 100%);
+  color: #cdd6f4;
   display: flex; align-items: center; justify-content: center;
   min-height: 100%; padding: 12px; overflow-x: hidden;
 }
 #racer { position: relative; width: min(96vw, 1080px); max-width: 1080px; }
 #canvas {
   display: block; width: 100% !important; height: auto !important;
-  background: #11111b; border-radius: 16px;
+  background: #11111b; border-radius: 18px;
   box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(137,180,250,.15);
 }
+/* ---------- HUD ---------- */
 #hud {
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 8px; align-items: center;
-  background: rgba(30,30,46,.72); backdrop-filter: blur(8px);
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  background: rgba(30,30,46,.75); backdrop-filter: blur(10px);
   border: 1px solid rgba(137,180,250,.25); border-radius: 999px; padding: 8px 14px;
   font: 700 13px/1 'Segoe UI', sans-serif; color: #a6adc8;
-  z-index: 5; white-space: nowrap;
+  z-index: 5; white-space: nowrap; max-width: 92%;
 }
-#hud .hud { background: rgba(0,0,0,.35); padding: 6px 10px; border-radius: 999px; }
-#hud .value { color: #f9e2af; }
+#hud .hud {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,.35); padding: 6px 11px; border-radius: 999px;
+}
+#hud .value { color: #f9e2af; font-variant-numeric: tabular-nums; }
 #hud #last_lap_time { display: none; }
 #hud .fastest { background: rgba(249,226,175,.18); }
+/* скорость — главный элемент */
+#hud #speed { position: relative; padding-right: 13px; }
+#hud #speed .value { font-size: 17px; color: #a6e3a1; }
+#speed_fill_wrap {
+  position: absolute; left: 11px; right: 11px; bottom: 3px; height: 4px;
+  background: rgba(255,255,255,.12); border-radius: 99px; overflow: hidden;
+}
+#speed_fill {
+  display: block; height: 100%; width: 0%;
+  background: linear-gradient(90deg, #a6e3a1, #f9e2af 60%, #f38ba8);
+  border-radius: 99px; transition: width .15s linear;
+}
+/* ---------- mute ---------- */
 #mute {
-  position: absolute; right: 0; bottom: -46px; width: 38px; height: 38px;
+  position: absolute; right: 0; bottom: -48px; width: 38px; height: 38px;
   background: rgba(30,30,46,.9) url(images/mute.png) center no-repeat;
   background-size: 60px 32px; background-position: 4px 3px;
   border: 1px solid rgba(137,180,250,.3); border-radius: 10px; cursor: pointer;
@@ -34,12 +52,12 @@ body {
 }
 #mute.on { background-position: -28px 3px; }
 #mute:hover { transform: scale(1.08); }
-/* стартовый экран */
+/* ---------- стартовый экран ---------- */
 #startScreen {
   position: absolute; inset: 0; z-index: 10;
   display: flex; align-items: center; justify-content: center;
   background: rgba(17,17,27,.78); backdrop-filter: blur(10px);
-  border-radius: 16px; text-align: center; animation: fadeIn .35s ease;
+  border-radius: 18px; text-align: center; animation: fadeIn .35s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 #startScreen .card {
@@ -67,7 +85,7 @@ body {
 }
 #startBtn:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(166,227,161,.35); }
 #startBtn:active { transform: scale(.96); }
-/* мобильные кнопки */
+/* ---------- мобильные кнопки ---------- */
 #touch {
   position: absolute; inset: auto 12px 12px 12px; z-index: 7;
   display: none; justify-content: space-between; pointer-events: none;
@@ -83,3 +101,18 @@ body {
   transition: transform .1s;
 }
 #touch button:active { transform: scale(.9); background: rgba(137,180,250,.25); }
+
+/* ---------- адаптив ---------- */
+@media (max-width: 700px) {
+  body { padding: 6px; }
+  #racer { width: 100vw; max-width: none; }
+  #canvas { border-radius: 12px; }
+  #startScreen { border-radius: 12px; }
+  #startScreen .card { padding: 20px 18px; }
+  #startScreen h1 { font-size: 26px; }
+  #hud { top: 8px; gap: 6px; padding: 6px 10px; font-size: 12px; }
+  #hud .hud { padding: 5px 8px; }
+  #hud #speed .value { font-size: 15px; }
+  #touch button { width: 58px; height: 58px; font-size: 22px; border-radius: 16px; }
+  #mute { bottom: -44px; }
+}
