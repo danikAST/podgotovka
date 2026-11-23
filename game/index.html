@@ -28,7 +28,8 @@
   .tbtn { position:fixed; bottom:30px; width:76px; height:76px; border-radius:50%; background:rgba(137,180,250,.25); border:2px solid rgba(137,180,250,.55); color:#cdd6f4; font-size:30px; display:flex; align-items:center; justify-content:center; pointer-events:auto; user-select:none; touch-action:none; }
   #btnL { left:24px; }
   #btnR { left:112px; }
-  #btnJ { right:24px; }
+  #btnA { right:24px; background:rgba(166,227,161,.22); border-color:rgba(166,227,161,.55); color:#a6e3a1; font-size:26px; }
+  #btnJ { right:112px; }
   .tbtn:active { background:rgba(137,180,250,.5); }
   @media (pointer:coarse) { #touch { display:block; } }
 </style>
@@ -39,6 +40,7 @@
 <div id="touch">
   <div class="tbtn" id="btnL">◀</div>
   <div class="tbtn" id="btnR">▶</div>
+  <div class="tbtn" id="btnA">⚔️</div>
   <div class="tbtn" id="btnJ">⬆</div>
 </div>
 <div id="overlay">
@@ -129,14 +131,14 @@ const LEVELS = [
 
 // ---------- СЛОЖНОСТЬ ----------
 const DIFF = {
-  easy:   { lives:5, speed:0.014, name:"Лёгкая" },
-  normal: { lives:3, speed:0.022, name:"Средняя" },
-  hard:   { lives:2, speed:0.034, name:"Сложная" },
+  easy:   { lives:5, speed:0.008, name:"Лёгкая" },
+  normal: { lives:3, speed:0.012, name:"Средняя" },
+  hard:   { lives:2, speed:0.018, name:"Сложная" },
 };
 
 // ---------- Состояние ----------
 let S = { score:0, lives:3, running:false, particles:[], camShake:0, time:0, won:false,
-          level:0, diff:"normal" };
+          level:0, diff:"normal", swing:0 };
 let KEYS = {};
 let coins=[], ENEMIES=[], P={}, flag={};
 
@@ -210,19 +212,75 @@ function moveEntity(e, dx, dy){
 // ---------- Враги ----------
 function resetEnemies(list){
   ENEMIES.length=0;
-  for(const e of list) ENEMIES.push({x:e.x, y:e.y, w:0.7, h:0.6, dir:1, speed:DIFF[S.diff].speed, alive:true, anim:Math.random()*10});
+  for(const e of list) ENEMIES.push({x:e.x, y:e.y, w:0.7, h:0.6, dir:1, speed:DIFF[S.diff].speed,
+    alive:true, anim:Math.random()*10, hp:2, state:"patrol", atkCd:0, flash:0, kb:0, kbDir:1});
 }
 function updateEnemies(dt){
   for(const e of ENEMIES){
     if(!e.alive) continue;
     e.anim += dt;
-    const dx = e.dir * e.speed * tile * 60 * dt;
+    e.flash = Math.max(0, e.flash - dt);
+    e.atkCd = Math.max(0, e.atkCd - dt);
+    const p = P;
+    const distX = Math.abs(p.x - e.x);
+    const distY = Math.abs((p.y+p.h) - (e.y+e.h));
+    if(e.state==="patrol" && distX < 6 && distY < 2.5) e.state = "attack";
+    if(e.state==="attack" && distX > 9) e.state = "patrol";
+    const base = e.speed * tile * 60 * dt;
+    const spd = base * (e.state==="attack" ? 1.12 : 1);
+    let vx = 0;
+    if(e.state==="patrol"){
+      vx = e.dir * spd;
+    } else {
+      vx = Math.sign(p.x - e.x) * spd;
+      if(vx!==0) e.dir = vx>0?1:-1;
+    }
     const prevOn = e.onGround;
     e.onGround = false;
-    if(!moveEntity(e, dx, 0)) e.dir *= -1;
+    if(!moveEntity(e, vx, 0)){ if(e.state==="patrol") e.dir *= -1; }
+    if(e.kb>0){
+      e.kb -= dt;
+      moveEntity(e, e.kbDir * 0.2 * tile * 60 * dt, 0);
+    }
     moveEntity(e, 0, 0.012 * tile);
     e.x = Math.max(0.05, Math.min(COLS-1-e.w, e.x));
     if(!prevOn && e.onGround) puff(e.x+e.w/2, e.y+e.h, "rgba(166,227,161,.35)", 4, 1);
+    // враг атакует игрока (по дистанции)
+    if(e.state==="attack" && !P.dead){
+      const hitDist = Math.abs((p.x+p.w/2) - (e.x+e.w/2));
+      const hitY = Math.abs((p.y+p.h) - (e.y+e.h));
+      if(hitDist < 1.3 && hitY < 1.5){
+        if(e.atkCd<=0){ e.atkCd = 1.1; hitPlayer(); }
+        // упираемся в игрока, не проходим сквозь
+        e.x = p.x + (e.dir>0 ? -e.w-0.05 : p.w+0.05);
+      }
+    }
+  }
+}
+// игрок атакует мечом
+function tryAttack(){
+  if(S.swing>0 || !S.running || P.dead) return;
+  S.swing = 0.32;
+  beep(260,0.08,"square",0.05);
+  const cx = P.x + P.w/2 + P.dir*0.75;
+  const cy = P.y + P.h*0.45;
+  for(const e of ENEMIES){
+    if(!e.alive) continue;
+    const ex = e.x+e.w/2, ey = e.y+e.h/2;
+    if(Math.abs(ex-cx) < 1.0 && Math.abs(ey-cy) < 1.25){
+      e.hp--; e.flash = 0.25;
+      e.kbDir = Math.sign(ex - P.x) || P.dir;
+      e.kb = 0.3;
+      if(e.hp <= 0){
+        e.alive = false;
+        S.score += 25;
+        puff(ex*tile, ey*tile, "rgba(243,139,168,.95)", 22, 3.4);
+        beep(180,0.18,"sawtooth",0.07);
+      } else {
+        beep(320,0.1,"square",0.06);
+        puff(ex*tile, ey*tile, "rgba(249,226,175,.9)", 10, 2.2);
+      }
+    }
   }
 }
 
@@ -234,6 +292,8 @@ function update(dt){
   if(KEYS["ArrowRight"]||KEYS["KeyD"]) ax += 1;
   const jump = KEYS["ArrowUp"]||KEYS["Space"]||KEYS["KeyW"];
   if(ax!==0) P.dir = ax>0?1:-1;
+  if(KEYS["KeyX"]||KEYS["KeyF"]||KEYS["KeyJ"]) tryAttack();
+  S.swing = Math.max(0, S.swing - dt);
   const accel = 0.05*tile, maxV = 0.24*tile, fric = 0.82;
   P.vx += ax*accel*60*dt;
   if(ax===0 && P.onGround) P.vx *= Math.pow(fric, 60*dt);
@@ -367,45 +427,97 @@ function drawEnemy(e){
   if(!e.alive) return;
   const x = (e.x-cam)*tile, y = e.y*tile, w = e.w*tile, h = e.h*tile;
   const wob = Math.sin(e.anim*8)*2;
-  ctx.fillStyle = "#f38ba8";
+  const attacking = e.state==="attack";
+  // тело слизня с градиентом
+  const g = ctx.createLinearGradient(0, y, 0, y+h);
+  g.addColorStop(0, "#f38ba8");
+  g.addColorStop(1, "#b5526e");
+  ctx.fillStyle = e.flash>0 ? "#ffffff" : g;
   ctx.beginPath();
   ctx.moveTo(x+3, y+h-4);
   ctx.quadraticCurveTo(x+3, y+wob+6, x+w/2, y+6);
   ctx.quadraticCurveTo(x+w-3, y+wob+6, x+w-3, y+h-4);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#e06c8b";
-  ctx.beginPath(); ctx.ellipse(x+w/2, y+h-4, w*0.32, 6, 0, 0, 7); ctx.fill();
-  ctx.fillStyle="#11111b";
-  ctx.beginPath(); ctx.arc(x+w*0.34, y+h*0.38, 3, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(x+w*0.66, y+h*0.38, 3, 0, 7); ctx.fill();
+  // шипы на спине
+  ctx.fillStyle = e.flash>0 ? "#eee" : "#e06c8b";
+  for(let i=0;i<3;i++){
+    const sx = x + w*(0.25+0.25*i);
+    ctx.beginPath();
+    ctx.moveTo(sx-6, y+h-6);
+    ctx.lineTo(sx, y+h-18 - (attacking?4:0));
+    ctx.lineTo(sx+6, y+h-6);
+    ctx.closePath(); ctx.fill();
+  }
+  // глаза: злые (красные при атаке)
+  ctx.fillStyle = attacking ? "#f9e2af" : "#11111b";
+  ctx.beginPath(); ctx.arc(x+w*0.32, y+h*0.38, 3.5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+w*0.68, y+h*0.38, 3.5, 0, 7); ctx.fill();
+  // HP-бар (если ранен)
+  if(e.hp < 2){
+    ctx.fillStyle = "rgba(17,17,27,.6)";
+    ctx.fillRect(x+4, y-8, w-8, 4);
+    ctx.fillStyle = "#a6e3a1";
+    ctx.fillRect(x+4, y-8, (w-8)*(e.hp/2), 4);
+  }
 }
 function drawPlayer(){
-  if(P.dead) return;
-  if(P.inv>0 && Math.floor(P.inv*12)%2===0) return;
+  if(!P.h) return;
+  if(P.inv>0 && Math.floor(P.inv*12)%2===0 && !P.dead) return;
   const x = (P.x-cam)*tile, y = P.y*tile, w = P.w*tile, h = P.h*tile;
   ctx.save(); ctx.translate(x+w/2, y+h);
   const run = P.onGround ? Math.sin(P.anim*2)*3 : 0;
   ctx.scale(P.dir, 1);
+  if(P.dead){
+    ctx.globalAlpha = 0.5;
+    ctx.rotate(-Math.PI/2);
+  }
+  // ноги (шаг)
   ctx.fillStyle="#45475a";
   ctx.fillRect(-w*0.30, -h*0.22 + run*0.3, w*0.18, h*0.22);
   ctx.fillRect(w*0.12, -h*0.22 - run*0.3, w*0.18, h*0.22);
-  ctx.fillStyle="#89b4fa";
+  // тело
+  const tg = ctx.createLinearGradient(0, -h, 0, 0);
+  tg.addColorStop(0, "#89b4fa"); tg.addColorStop(1, "#5f84d8");
+  ctx.fillStyle = tg;
   ctx.fillRect(-w*0.32, -h*0.85, w*0.64, h*0.66);
+  // пояс
   ctx.fillStyle="#45475a";
   ctx.fillRect(-w*0.32, -h*0.42, w*0.64, h*0.10);
+  // голова
   ctx.fillStyle="#f5e0dc";
   ctx.beginPath(); ctx.arc(0, -h*0.95, w*0.28, 0, 7); ctx.fill();
   ctx.fillStyle="#11111b";
   ctx.beginPath(); ctx.arc(w*0.12, -h*0.98, 2.5, 0, 7); ctx.fill();
+  // шлем
   ctx.fillStyle="#7287fd";
   ctx.beginPath();
   ctx.moveTo(-w*0.34, -h*0.95);
   ctx.quadraticCurveTo(0, -h*1.25, w*0.34, -h*0.95);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle="#cba6f7";
-  ctx.fillRect(w*0.30, -h*0.75, w*0.10, h*0.55);
-  ctx.fillStyle="#f9e2af";
-  ctx.fillRect(w*0.30, -h*0.75, w*0.10, h*0.12);
+  // меч (рука + клинок)
+  const sw = S.swing;
+  ctx.save();
+  ctx.translate(w*0.38, -h*0.62);
+  if(sw>0){
+    const a = (1 - sw/0.32)*Math.PI*1.2 - Math.PI*0.55;
+    ctx.rotate(a);
+    ctx.globalAlpha = Math.min(1, sw/0.32*2.5);
+    ctx.strokeStyle = "#f9e2af";
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(0,0, w*0.9, -0.7, 0.7); ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.rotate(-0.7);
+  }
+  // рука
+  ctx.fillStyle="#f5e0dc";
+  ctx.fillRect(-2, -2, w*0.22, 4);
+  // клинок
+  ctx.fillStyle="#cdd6f4";
+  ctx.fillRect(0, -1.5, w*1.15, 3);
+  ctx.fillStyle="#a6e3a1";
+  ctx.fillRect(w*1.15, -1.5, w*0.12, 3);
+  ctx.restore();
   ctx.restore();
 }
 function drawFlag(){
@@ -524,7 +636,7 @@ function bindTouch(id, code){
   el.addEventListener("mouseup", up);
   el.addEventListener("mouseleave", up);
 }
-bindTouch("btnL","ArrowLeft"); bindTouch("btnR","ArrowRight"); bindTouch("btnJ","ArrowUp");
+bindTouch("btnL","ArrowLeft"); bindTouch("btnR","ArrowRight"); bindTouch("btnA","KeyX"); bindTouch("btnJ","ArrowUp");
 
 document.querySelectorAll(".dbtn").forEach(b => b.addEventListener("click", ()=>selectDiff(b.dataset.diff)));
 window.addEventListener("resize", ()=>{ resize(); });
@@ -532,7 +644,7 @@ window.addEventListener("resize", ()=>{ resize(); });
 resize();
 selectDiff("normal");
 OV.title.textContent = "Приключения Рыцаря";
-OV.text.textContent = "Собери звёзды и доберись до флага. Выбери сложность и жми «Играть».";
+OV.text.textContent = "Собери звёзды и доберись до флага. ПК: ←→/AD — бег, ↑/пробел — прыжок, X/F/J — меч. На телефоне — кнопки на экране.";
 OV.btn.textContent = "▶ Играть";
 OV.btn.onclick = startGame;
 OV.el.style.display = "flex";
