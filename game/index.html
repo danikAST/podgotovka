@@ -17,7 +17,8 @@
   #lvl { color:#a6adc8; font-size:13px; font-weight:600; }
   #overlay { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(17,17,27,.72); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:#cdd6f4; z-index:10; text-align:center; padding:20px; animation:fadeIn .35s ease; }
   @keyframes fadeIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }
-  #overlay h1 { font-size:38px; margin-bottom:12px; font-weight:800; background:linear-gradient(135deg,#89b4fa,#f9e2af 60%,#a6e3a1); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 3px 10px rgba(0,0,0,.5)); letter-spacing:.5px; }
+  #overlay h1 { font-family:Georgia,"Times New Roman",serif; font-size:42px; margin-bottom:12px; font-weight:700; background:linear-gradient(135deg,#89b4fa,#f9e2af 60%,#a6e3a1); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 3px 12px rgba(0,0,0,.55)); letter-spacing:1px; }
+  .dbtn:focus-visible, #ovBtn:focus-visible, #ovBtn2:focus-visible, .tbtn:focus-visible { outline:2px solid #f9e2af; outline-offset:3px; }
   #overlay p { font-size:17px; margin-bottom:20px; max-width:460px; line-height:1.5; color:#cdd6f4; }
   #diffRow { display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; justify-content:center; }
   .dbtn { font-size:15px; padding:11px 20px; border:2px solid transparent; border-radius:14px; background:linear-gradient(180deg,#3a3d55,#2a2c40); color:#cdd6f4; font-weight:600; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.3); transition:transform .12s ease, box-shadow .12s ease, border-color .12s; }
