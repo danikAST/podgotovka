@@ -10,29 +10,31 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { width:100%; height:100%; overflow:hidden; background:#1e1e2e; font-family:'Segoe UI',system-ui,sans-serif; }
-  canvas { display:block; width:100%; height:100%; image-rendering:pixelated; touch-action:none; }
-  #ui { position:fixed; top:10px; left:12px; color:#cdd6f4; font-size:16px; font-weight:700; text-shadow:0 2px 4px rgba(0,0,0,.7); pointer-events:none; z-index:5; line-height:1.4; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #ui { position:fixed; top:12px; left:12px; color:#cdd6f4; font-size:16px; font-weight:700; pointer-events:none; z-index:5; line-height:1.5; background:rgba(30,30,46,.6); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(137,180,250,.25); border-radius:14px; padding:10px 16px; box-shadow:0 4px 18px rgba(0,0,0,.35); }
   #ui b { color:#f9e2af; }
   #lives { color:#f38ba8; }
-  #lvl { color:#a6adc8; font-size:13px; }
-  #overlay { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(17,17,27,.88); color:#cdd6f4; z-index:10; text-align:center; padding:20px; }
-  #overlay h1 { font-size:32px; color:#89b4fa; margin-bottom:10px; }
-  #overlay p { font-size:17px; margin-bottom:18px; max-width:440px; line-height:1.45; }
-  #diffRow { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; justify-content:center; }
-  .dbtn { font-size:15px; padding:10px 18px; border:2px solid #45475a; border-radius:10px; background:#313244; color:#cdd6f4; font-weight:600; cursor:pointer; }
-  .dbtn.sel { border-color:#89b4fa; background:#45475a; color:#89b4fa; }
-  #ovBtn { font-size:20px; padding:12px 34px; border:none; border-radius:10px; background:#89b4fa; color:#11111b; font-weight:700; cursor:pointer; }
-  #ovBtn:hover { background:#a6d0ff; }
-  #ovBtn2 { font-size:20px; padding:12px 34px; border:none; border-radius:10px; background:#a6e3a1; color:#11111b; font-weight:700; cursor:pointer; margin-left:12px; }
-  #ovBtn2:hover { background:#bff0bb; }
-  .sub { font-size:14px; color:#a6adc8; margin-top:8px; }
+  #lvl { color:#a6adc8; font-size:13px; font-weight:600; }
+  #overlay { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; background:rgba(17,17,27,.72); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:#cdd6f4; z-index:10; text-align:center; padding:20px; animation:fadeIn .35s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:scale(1); } }
+  #overlay h1 { font-size:38px; margin-bottom:12px; font-weight:800; background:linear-gradient(135deg,#89b4fa,#f9e2af 60%,#a6e3a1); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 3px 10px rgba(0,0,0,.5)); letter-spacing:.5px; }
+  #overlay p { font-size:17px; margin-bottom:20px; max-width:460px; line-height:1.5; color:#cdd6f4; }
+  #diffRow { display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; justify-content:center; }
+  .dbtn { font-size:15px; padding:11px 20px; border:2px solid transparent; border-radius:14px; background:linear-gradient(180deg,#3a3d55,#2a2c40); color:#cdd6f4; font-weight:600; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.3); transition:transform .12s ease, box-shadow .12s ease, border-color .12s; }
+  .dbtn:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(0,0,0,.4); }
+  .dbtn.sel { border-color:#89b4fa; background:linear-gradient(180deg,#4a4f6e,#383c58); color:#89b4fa; box-shadow:0 0 14px rgba(137,180,250,.35); }
+  #ovBtn { font-size:20px; padding:13px 38px; border:none; border-radius:14px; background:linear-gradient(135deg,#89b4fa,#6c96e8); color:#11111b; font-weight:800; cursor:pointer; box-shadow:0 5px 18px rgba(137,180,250,.35); transition:transform .12s ease, box-shadow .12s ease; }
+  #ovBtn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(137,180,250,.5); }
+  #ovBtn2 { font-size:20px; padding:13px 38px; border:none; border-radius:14px; background:linear-gradient(135deg,#a6e3a1,#7fc97a); color:#11111b; font-weight:800; cursor:pointer; margin-left:12px; box-shadow:0 5px 18px rgba(166,227,161,.3); transition:transform .12s ease, box-shadow .12s ease; }
+  #ovBtn2:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(166,227,161,.45); }
+  .sub { font-size:14px; color:#a6adc8; margin-top:10px; }
   #touch { position:fixed; inset:0; pointer-events:none; z-index:4; display:none; }
-  .tbtn { position:fixed; bottom:30px; width:76px; height:76px; border-radius:50%; background:rgba(137,180,250,.25); border:2px solid rgba(137,180,250,.55); color:#cdd6f4; font-size:30px; display:flex; align-items:center; justify-content:center; pointer-events:auto; user-select:none; touch-action:none; }
+  .tbtn { position:fixed; bottom:30px; width:76px; height:76px; border-radius:50%; background:rgba(137,180,250,.22); border:2px solid rgba(137,180,250,.55); color:#cdd6f4; font-size:30px; display:flex; align-items:center; justify-content:center; pointer-events:auto; user-select:none; touch-action:none; backdrop-filter:blur(4px); }
   #btnL { left:24px; }
   #btnR { left:112px; }
-  #btnA { right:24px; background:rgba(166,227,161,.22); border-color:rgba(166,227,161,.55); color:#a6e3a1; font-size:26px; }
+  #btnA { right:24px; background:rgba(166,227,161,.2); border-color:rgba(166,227,161,.55); color:#a6e3a1; font-size:26px; }
   #btnJ { right:112px; }
-  .tbtn:active { background:rgba(137,180,250,.5); }
+  .tbtn:active { background:rgba(137,180,250,.5); transform:scale(.9); }
   @media (pointer:coarse) { #touch { display:block; } }
 </style>
 </head>
@@ -415,6 +417,13 @@ function drawTile(c,r){
   rRect(x, y+tile-g, tile, 3, th.deco);
   ctx.fillStyle = "rgba(0,0,0,.12)";
   ctx.fillRect(x+4, y+10, 6, 4); ctx.fillRect(x+tile-12, y+tile-14, 6, 4);
+  // псевдо-3D: подсветка сверху, боковая грань справа, нижняя грань
+  ctx.fillStyle = "rgba(255,255,255,.10)";
+  ctx.fillRect(x, y, tile, 2);
+  ctx.fillStyle = "rgba(0,0,0,.08)";
+  ctx.fillRect(x+tile-4, y+2, 4, tile-6);
+  ctx.fillStyle = "rgba(0,0,0,.20)";
+  ctx.fillRect(x, y+tile-4, tile, 4);
 }
 function drawForeground(c,r){
   const x = (c-cam)*tile, y = r*tile;
@@ -430,11 +439,19 @@ function drawCoin(c){
   const x = (c.x-cam)*tile, y = c.y*tile;
   const cx = x+tile/2, cy = y+tile/2;
   const pulse = 0.75 + 0.25*Math.sin(S.time*5);
-  ctx.save(); ctx.translate(cx,cy); ctx.scale(pulse,1);
+  ctx.save(); ctx.translate(cx,cy);
+  // свечение
+  const g = ctx.createRadialGradient(0,0,2,0,0,tile*0.6);
+  g.addColorStop(0,"rgba(249,226,175,.55)"); g.addColorStop(1,"rgba(249,226,175,0)");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,tile*0.6,0,7); ctx.fill();
+  ctx.scale(pulse,1);
   ctx.fillStyle="#f9e2af"; ctx.beginPath(); ctx.arc(0,0,tile*0.28,0,7); ctx.fill();
   ctx.fillStyle="#f5c96b"; ctx.beginPath(); ctx.arc(0,0,tile*0.19,0,7); ctx.fill();
-  ctx.fillStyle="#f9e2af"; ctx.font="bold "+(tile*0.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#fff8e1"; ctx.font="bold "+(tile*0.28)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText("★",0,1);
+  // блик
+  ctx.fillStyle="rgba(255,255,255,.85)";
+  ctx.beginPath(); ctx.arc(-tile*0.10,-tile*0.12,tile*0.06,0,7); ctx.fill();
   ctx.restore();
 }
 function drawEnemy(e){
@@ -442,7 +459,12 @@ function drawEnemy(e){
   const x = (e.x-cam)*tile, y = e.y*tile, w = e.w*tile, h = e.h*tile;
   const wob = Math.sin(e.anim*8)*2;
   const attacking = e.state==="attack";
-  // тело слизня с градиентом
+  const squish = 1 + Math.sin(e.anim*9)*0.06 + (attacking?0.05:0);
+  // тень
+  ctx.fillStyle = "rgba(0,0,0,.28)";
+  ctx.beginPath(); ctx.ellipse(x+w/2, y+h+2, w*0.55, 4, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(x+w/2, y+h); ctx.scale(1, squish); ctx.translate(-(x+w/2), -(y+h));
+  // тело слизня
   const g = ctx.createLinearGradient(0, y, 0, y+h);
   g.addColorStop(0, "#f38ba8");
   g.addColorStop(1, "#b5526e");
@@ -451,6 +473,13 @@ function drawEnemy(e){
   ctx.moveTo(x+3, y+h-4);
   ctx.quadraticCurveTo(x+3, y+wob+6, x+w/2, y+6);
   ctx.quadraticCurveTo(x+w-3, y+wob+6, x+w-3, y+h-4);
+  ctx.closePath(); ctx.fill();
+  // блик сверху
+  ctx.fillStyle = "rgba(255,255,255,.22)";
+  ctx.beginPath();
+  ctx.moveTo(x+12, y+12);
+  ctx.quadraticCurveTo(x+w/2, y+4, x+w-14, y+16);
+  ctx.quadraticCurveTo(x+w/2, y+20, x+12, y+12);
   ctx.closePath(); ctx.fill();
   // шипы на спине
   ctx.fillStyle = e.flash>0 ? "#eee" : "#e06c8b";
@@ -462,16 +491,24 @@ function drawEnemy(e){
     ctx.lineTo(sx+6, y+h-6);
     ctx.closePath(); ctx.fill();
   }
-  // глаза: злые (красные при атаке)
-  ctx.fillStyle = attacking ? "#f9e2af" : "#11111b";
-  ctx.beginPath(); ctx.arc(x+w*0.32, y+h*0.38, 3.5, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(x+w*0.68, y+h*0.38, 3.5, 0, 7); ctx.fill();
+  // глаза: белки + зрачки
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(x+w*0.32, y+h*0.38, 5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+w*0.68, y+h*0.38, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = attacking ? "#d20f39" : "#11111b";
+  ctx.beginPath(); ctx.arc(x+w*0.32, y+h*0.38, 2.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+w*0.68, y+h*0.38, 2.6, 0, 7); ctx.fill();
+  // капли слизи
+  ctx.fillStyle = "rgba(243,139,168,.8)";
+  ctx.beginPath(); ctx.arc(x+w*0.15, y+h-2, 3, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+w*0.88, y+h-3, 2.2, 0, 7); ctx.fill();
+  ctx.restore();
   // HP-бар (если ранен)
   if(e.hp < 2){
     ctx.fillStyle = "rgba(17,17,27,.6)";
-    ctx.fillRect(x+4, y-8, w-8, 4);
+    ctx.fillRect(x+4, y-10, w-8, 4);
     ctx.fillStyle = "#a6e3a1";
-    ctx.fillRect(x+4, y-8, (w-8)*(e.hp/2), 4);
+    ctx.fillRect(x+4, y-10, (w-8)*(e.hp/2), 4);
   }
 }
 function drawPlayer(){
@@ -480,6 +517,9 @@ function drawPlayer(){
   const x = (P.x-cam)*tile, y = P.y*tile, w = P.w*tile, h = P.h*tile;
   ctx.save(); ctx.translate(x+w/2, y+h);
   const run = P.onGround ? Math.sin(P.anim*2)*3 : 0;
+  // тень под персонажем
+  ctx.fillStyle = "rgba(0,0,0,.25)";
+  ctx.beginPath(); ctx.ellipse(x+w/2, y+h+2, w*0.5, 3, 0, 0, 7); ctx.fill();
   ctx.scale(P.dir, 1);
   if(P.dead){
     ctx.globalAlpha = 0.5;
@@ -519,6 +559,10 @@ function drawPlayer(){
     ctx.strokeStyle = "#f9e2af";
     ctx.lineWidth = 5;
     ctx.beginPath(); ctx.arc(0,0, w*0.9, -0.7, 0.7); ctx.stroke();
+    // свечение клинка
+    const g2 = ctx.createRadialGradient(0,0,2, 0,0, w*1.4);
+    g2.addColorStop(0,"rgba(249,226,175,.8)"); g2.addColorStop(1,"rgba(249,226,175,0)");
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0,0,w*1.4,0,7); ctx.fill();
     ctx.globalAlpha = 1;
   } else {
     ctx.rotate(-0.7);
@@ -535,11 +579,21 @@ function drawPlayer(){
   ctx.restore();
 }
 function drawFlag(){
+  if(!flag.x || isNaN(flag.x)) return;
   const x = (flag.x-cam)*tile, y = flag.y*tile;
-  ctx.fillStyle="#45475a"; ctx.fillRect(x+6, y+tile*0.2, 4, tile*0.8);
+  const gl = ctx.createRadialGradient(x+18,y+tile*0.3,4, x+18,y+tile*0.3,40);
+  gl.addColorStop(0,"rgba(166,227,161,.35)"); gl.addColorStop(1,"rgba(166,227,161,0)");
+  ctx.fillStyle=gl; ctx.beginPath(); ctx.arc(x+18,y+tile*0.3,40,0,7); ctx.fill();
+  const pg = ctx.createLinearGradient(x+6,0,x+10,0);
+  pg.addColorStop(0,"#585b70"); pg.addColorStop(1,"#a6adc8");
+  ctx.fillStyle=pg; ctx.fillRect(x+6,y+tile*0.2,4,tile*0.8);
+  ctx.fillStyle="#f9e2af"; ctx.beginPath(); ctx.arc(x+8,y+tile*0.18,3.5,0,7); ctx.fill();
   const wave = Math.sin(S.time*4)*3;
-  ctx.fillStyle="#a6e3a1";
-  ctx.beginPath(); ctx.moveTo(x+10,y+tile*0.2); ctx.lineTo(x+34, y+tile*0.2+wave); ctx.lineTo(x+10, y+tile*0.42+wave); ctx.closePath(); ctx.fill();
+  const fg = ctx.createLinearGradient(x+10,y+tile*0.2,x+34,y+tile*0.42);
+  fg.addColorStop(0,"#a6e3a1"); fg.addColorStop(1,"#7fc98d");
+  ctx.fillStyle=fg;
+  ctx.beginPath(); ctx.moveTo(x+10,y+tile*0.2); ctx.lineTo(x+34,y+tile*0.2+wave); ctx.lineTo(x+10,y+tile*0.42+wave); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,.25)"; ctx.lineWidth=1.5; ctx.stroke();
 }
 function drawParallax(){
   const th = LEVELS[S.level].theme;
@@ -547,6 +601,26 @@ function drawParallax(){
   const grad = ctx.createLinearGradient(0,0,0,h);
   grad.addColorStop(0,th.sky[0]); grad.addColorStop(0.5,th.sky[1]); grad.addColorStop(1,th.sky[2]);
   ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+  // светило (луна/солнце)
+  const mx = w*0.8, my = h*0.16;
+  const glow = ctx.createRadialGradient(mx,my,10,mx,my,110);
+  glow.addColorStop(0,"rgba(249,226,175,.4)"); glow.addColorStop(1,"rgba(249,226,175,0)");
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(mx,my,110,0,7); ctx.fill();
+  ctx.fillStyle = th.stars ? "#f9e2af" : "#ffd9a0";
+  ctx.beginPath(); ctx.arc(mx,my,36,0,7); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.4)";
+  ctx.beginPath(); ctx.arc(mx-12,my-10,10,0,7); ctx.fill();
+  // облака (медленный параллакс)
+  for(let i=0;i<4;i++){
+    const ox = ((i*320 + S.time*9 - cam*tile*0.05) % (w+360)) - 180;
+    const oy = h*(0.08 + 0.07*i);
+    ctx.fillStyle = "rgba(205,214,244,"+(0.05+0.03*i)+")";
+    ctx.beginPath();
+    ctx.ellipse(ox, oy, 70+i*12, 18, 0, 0, 7);
+    ctx.ellipse(ox+34, oy-8, 40, 14, 0, 0, 7);
+    ctx.ellipse(ox-38, oy-6, 36, 12, 0, 0, 7);
+    ctx.fill();
+  }
   if(th.stars){
     for(let i=0;i<40;i++){
       const sx = (i*137.5 - cam*tile*0.1) % (w+20);
