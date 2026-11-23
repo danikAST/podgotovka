@@ -131,9 +131,9 @@ const LEVELS = [
 
 // ---------- СЛОЖНОСТЬ ----------
 const DIFF = {
-  easy:   { lives:5, speed:0.006, name:"Лёгкая" },
-  normal: { lives:3, speed:0.009, name:"Средняя" },
-  hard:   { lives:2, speed:0.013, name:"Сложная" },
+  easy:   { lives:5, speed:0.0035, name:"Лёгкая" },
+  normal: { lives:3, speed:0.005, name:"Средняя" },
+  hard:   { lives:2, speed:0.008, name:"Сложная" },
 };
 
 // ---------- Состояние ----------
@@ -227,7 +227,7 @@ function updateEnemies(dt){
     if(e.state==="patrol" && distX < 6 && distY < 2.5) e.state = "attack";
     if(e.state==="attack" && distX > 9) e.state = "patrol";
     const base = e.speed * tile * 60 * dt;
-    const spd = base * (e.state==="attack" ? 1.05 : 1);
+    const spd = base * (e.state==="attack" ? 1.0 : 1);
     let vx = 0;
     if(e.state==="patrol"){
       vx = e.dir * spd;
